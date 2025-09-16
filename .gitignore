@@ -1,0 +1,27 @@
+# --- Python / Django ---
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+/media/
+staticfiles/
+
+# lokalne bazy plikowe:
+*.sqlite3
+db.sqlite3
+
+# --- Sekrety ---
+.env
+
+# --- VS Code ---
+.vscode/
+
+# --- Node/Frontend (na później) ---
+frontend/node_modules/
+frontend/dist/
+
+# --- System ---
+.DS_Store
+Thumbs.db
