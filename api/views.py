@@ -42,12 +42,18 @@ class FundingViewSet(viewsets.ModelViewSet):
     queryset = Funding.objects.all().order_by("-created_at")
     serializer_class = FundingSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = ["name", "funder", "program", "agreement_number", "description"]
+    ordering_fields = ["created_at", "start_date", "end_date", "amount_total", "name"]
+    ordering = ["-created_at"]
 
 
 class FundingTaskViewSet(viewsets.ModelViewSet):
     queryset = FundingTask.objects.select_related("funding").all().order_by("id")
     serializer_class = FundingTaskSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = ["title", "description", "funding__name"]
+    ordering_fields = ["id", "default_priority", "default_status", "default_due_days"]
+    ordering = ["id"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -61,6 +67,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by("-created_at")
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = ["name", "description", "owner__username"]
+    ordering_fields = ["created_at", "start_date", "end_date", "name", "status"]
+    ordering = ["-created_at"]
 
     def perform_create(self, serializer):
         # Jeśli nie podasz ownera, domyślnie przypisz tworzącego
@@ -76,6 +85,15 @@ class ProjectFundingViewSet(viewsets.ModelViewSet):
     )
     serializer_class = ProjectFundingSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = ["project__name", "funding__name", "note"]
+    ordering_fields = ["created_at", "allocation_start", "allocation_end", "is_primary"]
+    ordering = ["-created_at"]
+
+    queryset = (
+        ProjectFunding.objects.select_related("project", "funding")
+        .all()
+        .order_by("-created_at")
+    )
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -97,6 +115,22 @@ class TaskViewSet(viewsets.ModelViewSet):
     )
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = [
+        "title",
+        "description",
+        "project__name",
+        "funding__name",
+        "assignees__username",
+    ]
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "due_date",
+        "priority",
+        "status",
+        "title",
+    ]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         qs = super().get_queryset()
