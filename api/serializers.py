@@ -7,7 +7,7 @@ from .models import Project, Funding, ProjectFunding, FundingTask, Task
 class FundingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Funding
-        fiels = [
+        fields = [
             "id",
             "type",
             "name",
