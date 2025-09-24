@@ -2,9 +2,14 @@
 
 Stack: Django + DRF + PostgreSQL + React (Vite)
 
-## Dev start
-- python -m venv .venv && .\.venv\Scripts\activate.ps1
-- pip install -r requirements.txt
-- skopiuj .env.example -> .env i uzupełnij hasła
-- python manage.py migrate
-- python manage.py runserver 8000
+
+## Dev
+Backend:
+1) python -m venv .venv && source .venv/bin/activate
+2) pip install -r requirements.txt
+3) python manage.py runserver
+
+Frontend:
+1) cd frontend && npm i
+2) skopiuj frontend/.env.example -> frontend/.env
+3) npm run dev
