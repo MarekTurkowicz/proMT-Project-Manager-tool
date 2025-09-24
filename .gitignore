@@ -11,11 +11,13 @@ staticfiles/
 # lokalne bazy plikowe:
 *.sqlite3
 db.sqlite3
+dump.sql
 
 # --- Sekrety ---
 .env
-
-# --- VS Code ---
+venv/
+.envrc
+.idea/
 .vscode/
 
 # --- Node/Frontend (na później) ---
@@ -25,3 +27,45 @@ frontend/dist/
 # --- System ---
 .DS_Store
 Thumbs.db
+
+
+
+# === Node / Vite (frontend) ===
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.parcel-cache/
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Vite env (prywatne)
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# === Python / Django (backend) ===
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/*.sqlite3
+backend/db.sqlite3
+backend/.mypy_cache/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Django: pliki lokalnych dumpów
+backend/*.sql
+backend/dumps/
+backend/media/
+
+# Ogólne systemowe / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
