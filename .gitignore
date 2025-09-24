@@ -1,71 +1,88 @@
-# --- Python / Django ---
-.venv/
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.log
-/media/
-staticfiles/
-
-# lokalne bazy plikowe:
-*.sqlite3
-db.sqlite3
-dump.sql
-
-# --- Sekrety ---
-.env
-venv/
-.envrc
-.idea/
-.vscode/
-
-# --- Node/Frontend (na później) ---
-frontend/node_modules/
-frontend/dist/
-
-# --- System ---
+# =============== GLOBAL ===============
+# OS files
 .DS_Store
 Thumbs.db
+Icon?
+ehthumbs.db
 
+# IDE / Editors
+.idea/
+.vscode/
+*.iml
 
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+pip-log.txt
 
-# === Node / Vite (frontend) ===
+# =============== FRONTEND (Vite/React/TS) ===============
+# Node dependencies and build artifacts
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/.parcel-cache/
 frontend/.eslintcache
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/pnpm-debug.log*
+frontend/.stylelintcache
+frontend/.turbo/
+frontend/.cache/
+frontend/coverage/
 
-# Vite env (prywatne)
+# Environment files (never commit secrets)
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 
-# === Python / Django (backend) ===
+# Package manager lockfile policy (uncomment exactly ONE if you prefer to exclude it)
+# frontend/package-lock.json
+# frontend/yarn.lock
+# frontend/pnpm-lock.yaml
+
+# =============== BACKEND (Python/Django/DRF) ===============
+# Virtual environments and caches
 backend/.venv/
 backend/venv/
 backend/__pycache__/
 backend/**/*.py[cod]
-backend/*.sqlite3
-backend/db.sqlite3
 backend/.mypy_cache/
 backend/.pytest_cache/
+backend/.ruff_cache/
 backend/.coverage
+backend/coverage.xml
 backend/htmlcov/
 
-# Django: pliki lokalnych dumpów
-backend/*.sql
+# Local databases / dumps
+backend/db.sqlite3
+backend/*.sqlite3
+backend/*.db
+backend/*.sqlite
 backend/dumps/
+backend/*.sql
+
+# User-uploaded media (usually not tracked)
 backend/media/
 
-# Ogólne systemowe / IDE
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
+# Environment files (never commit secrets)
+backend/.env
+backend/.env.local
+backend/.env.*.local
 
+# IMPORTANT: do NOT ignore Django migrations — they MUST be committed!
+# e.g. backend/app_name/migrations/0001_initial.py
+
+# =============== DOCKER (optional) ===============
+# Local docker caches / volumes (adjust to your setup)
+**/.docker
+**/docker-data/
+**/docker-cache/
+
+# =============== MISC ===============
+# Poetry / pyenv (if used — adjust as needed)
+backend/poetry.lock
+backend/.python-version
+
+# Windows PowerShell history (if it ever lands in the repo)
+*.pshistory
