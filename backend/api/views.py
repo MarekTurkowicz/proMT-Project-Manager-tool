@@ -71,6 +71,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "start_date", "end_date", "name", "status"]
     ordering = ["-created_at"]
 
+    def get_permissions(self):
+        if self.action in ["list"]:  # (ew. "retrieve" też, jeśli chcesz publicznie)
+            return [permissions.AllowAny()]
+        return [IsAuthenticated()]
+
     def perform_create(self, serializer):
         # Jeśli nie podasz ownera, domyślnie przypisz tworzącego
         owner = serializer.validated_data.get("owner") or self.request.user
