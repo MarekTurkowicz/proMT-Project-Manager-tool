@@ -1,20 +1,25 @@
-import { useHealthQuery } from "./features/health/healtsApi";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import ProjectsPage from "./features/projects/ProjectsPage";
+
+function Home() {
+  return (
+    <div style={{ padding: 24 }}>
+      <h1>Home</h1>
+      <p>
+        <Link to="/projects">Idź do projektów →</Link>
+      </p>
+    </div>
+  );
+}
 
 export default function App() {
-  const { data, isLoading, isError, refetch } = useHealthQuery();
-
   return (
-    <div style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1>Frontend działa ✅</h1>
-      <p>Test połączenia z API:</p>
-      {isLoading && <p>Ładowanie…</p>}
-      {isError && (
-        <p>
-          Błąd połączenia.{" "}
-          <button onClick={() => refetch()}>Spróbuj ponownie</button>
-        </p>
-      )}
-      {data && <pre>{JSON.stringify(data, null, 2)}</pre>}
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
