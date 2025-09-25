@@ -1,4 +1,4 @@
-import { useProjectsQuery } from "./projectsApi";
+import { useProjectsQuery, useCreateMutation } from "./projectsApi";
 
 const STATUS_LABEL: Record<"new" | "active" | "closed", string> = {
   new: "New",
@@ -9,8 +9,8 @@ const STATUS_LABEL: Record<"new" | "active" | "closed", string> = {
 const fmtDate = (d: string | null) => d ?? "—";
 
 export default function ProjectsPage() {
-  // Redux/RTK Query trzyma stan i cache — tu tylko używamy hooka
   const { data, isLoading, isError, refetch, isFetching } = useProjectsQuery();
+  const [createProject, { isLoading: isCreating }] = useCreateMutation(); // ⬅️ NOWE
 
   if (isLoading) return <div style={{ padding: 24 }}>Ładowanie…</div>;
   if (isError)
@@ -23,13 +23,43 @@ export default function ProjectsPage() {
 
   const items = data?.results ?? [];
 
+  async function handleAdd() {
+    try {
+      await createProject({
+        name: "Nowy projekt",
+        description: "",
+        status: "new",
+        start_date: null,
+        end_date: null,
+        funding_ids: [],
+        owner: null,
+      }).unwrap();
+      // po sukcesie lista sama się odświeży (invalidatesTags)
+    } catch (e) {
+      console.error("Create project failed:", e);
+      alert("Nie udało się utworzyć projektu (sprawdź autoryzację).");
+    }
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 800 }}>
       <h1 style={{ marginBottom: 8 }}>Projekty</h1>
 
-      <div style={{ marginBottom: 16, color: "#555" }}>
-        Razem: <strong>{data?.count ?? 0}</strong>{" "}
-        {isFetching && <span style={{ fontSize: 12 }}>(odświeżanie…)</span>}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ color: "#555" }}>
+          Razem: <strong>{data?.count ?? 0}</strong>{" "}
+          {isFetching && <span style={{ fontSize: 12 }}>(odświeżanie…)</span>}
+        </div>
+        <button onClick={handleAdd} disabled={isCreating}>
+          {isCreating ? "Dodawanie…" : "+ Add"}
+        </button>
       </div>
 
       {!items.length ? (

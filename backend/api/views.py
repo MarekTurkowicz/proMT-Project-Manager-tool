@@ -72,14 +72,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_permissions(self):
-        if self.action in ["list"]:  # (ew. "retrieve" też, jeśli chcesz publicznie)
+        if self.action in ["list","create"]:  # (ew. "retrieve" też, jeśli chcesz publicznie)
             return [permissions.AllowAny()]
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        # Jeśli nie podasz ownera, domyślnie przypisz tworzącego
-        owner = serializer.validated_data.get("owner") or self.request.user
+    # jeśli klient poda ownera w payloadzie, użyj jego; w przeciwnym razie:
+        user = self.request.user
+        provided_owner = serializer.validated_data.get("owner")
+
+        if provided_owner is not None:
+            owner = provided_owner
+        else:
+            # kluczowa linia: dla anonima -> None, dla zalogowanego -> user
+            owner = user if getattr(user, "is_authenticated", False) else None
+
         serializer.save(owner=owner)
+
+
 
 
 class ProjectFundingViewSet(viewsets.ModelViewSet):

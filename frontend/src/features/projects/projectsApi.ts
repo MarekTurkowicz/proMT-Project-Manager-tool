@@ -32,7 +32,17 @@ export const projectsApi = createApi({
       query: () => ({ url: "/api/projects/" }),
       providesTags: ["Projects"],
     }),
+
+create: b.mutation<Project, Partial<Project>>({
+      query: (body) => ({
+        url: "/api/projects/",
+        method: "post",
+        data: body,
+      }),
+      // po sukcesie odśwież listę
+      invalidatesTags: ["Projects"],
+    }),
   }),
 });
 
-export const { useListQuery: useProjectsQuery } = projectsApi;
+export const { useListQuery: useProjectsQuery, useCreateMutation, } = projectsApi;
