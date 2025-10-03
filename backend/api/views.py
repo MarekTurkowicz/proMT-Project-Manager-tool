@@ -1,7 +1,11 @@
-from django.shortcuts import render
+from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions
+from rest_framework.throttling import ScopedRateThrottle
+
 from .models import Funding, FundingTask, Project, ProjectFunding, Task
 from .serializers import (
     FundingSerializer,
@@ -10,6 +14,11 @@ from .serializers import (
     ProjectFundingSerializer,
     TaskSerializer,
 )
+
+
+# ─────────────────────────────
+# Health + Me
+# ─────────────────────────────
 
 
 @api_view(["GET"])
@@ -32,10 +41,70 @@ def me(request):
     )
 
 
+# ─────────────────────────────
+# Auth (sesje + CSRF)
+# ─────────────────────────────
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+@ensure_csrf_cookie
+def auth_csrf(request):
+    # Ustawia cookie `csrftoken`
+    return Response({"detail": "CSRF cookie set"})
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+@csrf_protect  # wymaga nagłówka X-CSRFToken z cookie
+def auth_login(request):
+    username = request.data.get("username")
+    password = request.data.get("password")
+
+    if not username or not password:
+        return Response({"detail": "Username and password required"}, status=400)
+
+    user = authenticate(request, username=username, password=password)
+    if not user:
+        return Response({"detail": "Invalid credentials"}, status=400)
+
+    login(request, user)
+    return Response(
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_staff": user.is_staff,
+        },
+        status=200,
+    )
+
+
+# anty brute-force: 5/min (skonfiguruj scope w settings → DEFAULT_THROTTLE_RATES['auth_login'])
+auth_login.throttle_classes = [ScopedRateThrottle]
+auth_login.throttle_scope = "auth_login"
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+@csrf_protect
+def auth_logout(request):
+    logout(request)
+    return Response(status=204)
+
+
+# ─────────────────────────────
+# Skrótowa perm-class
+# ─────────────────────────────
 class IsAuthenticated(permissions.IsAuthenticated):
     """Skrótowo, żeby mieć spójną nazwę."""
 
     pass
+
+
+# ─────────────────────────────
+# ViewSety
+# ─────────────────────────────
 
 
 class FundingViewSet(viewsets.ModelViewSet):
@@ -71,25 +140,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "start_date", "end_date", "name", "status"]
     ordering = ["-created_at"]
 
-    def get_permissions(self):
-        if self.action in ["list","create"]:  # (ew. "retrieve" też, jeśli chcesz publicznie)
-            return [permissions.AllowAny()]
-        return [IsAuthenticated()]
+    # Wszystkie akcje wymagają zalogowania (wewnętrzna appka)
+    # Jeśli chcesz, możesz dopuścić publiczne list/retrieve – wtedy odkomentuj:
+    # def get_permissions(self):
+    #     if self.action in ["list", "retrieve"]:
+    #         return [permissions.AllowAny()]
+    #     return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-    # jeśli klient poda ownera w payloadzie, użyj jego; w przeciwnym razie:
+        # owner = przesłany w payloadzie lub aktualny user, a jeśli brak logowania → None
         user = self.request.user
         provided_owner = serializer.validated_data.get("owner")
 
         if provided_owner is not None:
             owner = provided_owner
         else:
-            # kluczowa linia: dla anonima -> None, dla zalogowanego -> user
             owner = user if getattr(user, "is_authenticated", False) else None
 
         serializer.save(owner=owner)
-
-
 
 
 class ProjectFundingViewSet(viewsets.ModelViewSet):
@@ -103,12 +171,6 @@ class ProjectFundingViewSet(viewsets.ModelViewSet):
     search_fields = ["project__name", "funding__name", "note"]
     ordering_fields = ["created_at", "allocation_start", "allocation_end", "is_primary"]
     ordering = ["-created_at"]
-
-    queryset = (
-        ProjectFunding.objects.select_related("project", "funding")
-        .all()
-        .order_by("-created_at")
-    )
 
     def get_queryset(self):
         qs = super().get_queryset()

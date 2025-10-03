@@ -1,15 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .views import auth_csrf, auth_login, auth_logout, health, me
 from .views import (
-    health,
-    me,
     FundingViewSet,
     FundingTaskViewSet,
     ProjectViewSet,
     ProjectFundingViewSet,
     TaskViewSet,
 )
+
 
 router = DefaultRouter()
 router.register(r"fundings", FundingViewSet, basename="funding")
@@ -19,11 +18,10 @@ router.register(r"project-fundings", ProjectFundingViewSet, basename="projectfun
 router.register(r"tasks", TaskViewSet, basename="task")
 
 urlpatterns = [
-    # health & auth
     path("health/", health, name="health"),
-    path("auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/me/", me, name="auth_me"),
-    # CRUD API
+    path("auth/csrf/", auth_csrf, name="auth_csrf"),
+    path("auth/login/", auth_login, name="auth_login"),
+    path("auth/logout/", auth_logout, name="auth_logout"),
     path("", include(router.urls)),
 ]
