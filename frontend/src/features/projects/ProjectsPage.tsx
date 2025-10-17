@@ -136,6 +136,9 @@ export default function ProjectsPage() {
               {p.description && (
                 <div style={{ color: "#555" }}>{p.description}</div>
               )}
+              <Link to={`/projects/${p.id}/edit`}>
+                <button type="button">Edytuj</button>
+              </Link>
               <button
                 onClick={() => handleDelete(p.id)}
                 disabled={deletingId === p.id}

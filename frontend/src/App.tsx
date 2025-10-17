@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import ProjectsPage from "./features/projects/ProjectsPage";
 import LoginPage from "./features/auth/LoginPage";
 import ProtectedRoute from "./ProtectedRoute";
+import ProjectEditPage from "./features/projects/ProjectEditPage";
 import { Toaster } from "react-hot-toast";
 
 function Home() {
@@ -26,6 +27,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProjectsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects/:id/edit"
+          element={
+            <ProtectedRoute>
+              <ProjectEditPage />
             </ProtectedRoute>
           }
         />
