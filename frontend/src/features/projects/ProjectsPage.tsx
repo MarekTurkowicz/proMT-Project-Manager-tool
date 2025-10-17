@@ -1,4 +1,13 @@
-import { useProjectsQuery, useCreateMutation } from "./projectsApi";
+import {
+  useProjectsQuery,
+  useCreateMutation,
+  useDeleteMutation,
+} from "./projectsApi";
+import { useLogoutMutation } from "../auth/authApi";
+import UserBar from "../auth/UserBar";
+import { Link } from "react-router-dom";
+import { useState } from "react";
+import Spinner from "../../components/Spinner";
 
 const STATUS_LABEL: Record<"new" | "active" | "closed", string> = {
   new: "New",
@@ -10,7 +19,10 @@ const fmtDate = (d: string | null) => d ?? "—";
 
 export default function ProjectsPage() {
   const { data, isLoading, isError, refetch, isFetching } = useProjectsQuery();
-  const [createProject, { isLoading: isCreating }] = useCreateMutation(); // ⬅️ NOWE
+  const [createProject, { isLoading: isCreating }] = useCreateMutation();
+  const [deleteProject] = useDeleteMutation();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   if (isLoading) return <div style={{ padding: 24 }}>Ładowanie…</div>;
   if (isError)
@@ -34,17 +46,63 @@ export default function ProjectsPage() {
         funding_ids: [],
         owner: null,
       }).unwrap();
-      // po sukcesie lista sama się odświeży (invalidatesTags)
     } catch (e) {
       console.error("Create project failed:", e);
       alert("Nie udało się utworzyć projektu (sprawdź autoryzację).");
     }
   }
 
+  async function handleDelete(id: number) {
+    const ok = window.confirm("Na pewno usunąć ten projekt?");
+    if (!ok) return;
+
+    try {
+      setDeletingId(id);
+      await deleteProject(id).unwrap();
+    } catch {
+      alert("Nie udało się usunąć projektu.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 800 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0 }}>Projekty</h1>
+          <div style={{ color: "#9ca3af", fontSize: 12 }}>
+            Zarządzaj projektami i finansowaniem
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link to="/projects/new">
+            <button type="button">+ New</button>
+          </Link>
+          <UserBar />
+        </div>
+      </div>
       <h1 style={{ marginBottom: 8 }}>Projekty</h1>
-
+      <button
+        onClick={async () => {
+          try {
+            await logout().unwrap();
+            window.location.href = "/login";
+          } catch {
+            alert("Nie udało się wylogować");
+          }
+        }}
+      >
+        {isLoggingOut ? "Wylogowywanie..." : "Wyloguj"}
+      </button>
+      ;
       <div
         style={{
           display: "flex",
@@ -61,7 +119,6 @@ export default function ProjectsPage() {
           {isCreating ? "Dodawanie…" : "+ Add"}
         </button>
       </div>
-
       {!items.length ? (
         <p>Brak projektów.</p>
       ) : (
@@ -79,6 +136,24 @@ export default function ProjectsPage() {
               {p.description && (
                 <div style={{ color: "#555" }}>{p.description}</div>
               )}
+              <button
+                onClick={() => handleDelete(p.id)}
+                disabled={deletingId === p.id}
+                title="Usuń projekt"
+                style={{
+                  color: deletingId === p.id ? "#b91c1c" : "#dc2626",
+                  opacity: deletingId === p.id ? 0.6 : 1,
+                }}
+              >
+                {deletingId === p.id ? (
+                  <>
+                    <Spinner size={16} />
+                    Usuwanie…
+                  </>
+                ) : (
+                  "Usuń"
+                )}
+              </button>
             </li>
           ))}
         </ul>

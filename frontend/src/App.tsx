@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import ProjectsPage from "./features/projects/ProjectsPage";
+import LoginPage from "./features/auth/LoginPage";
+import ProtectedRoute from "./ProtectedRoute";
+import { Toaster } from "react-hot-toast";
 
 function Home() {
   return (
@@ -17,9 +20,19 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <ProjectsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/projects" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Toaster position="top-right" />
     </BrowserRouter>
   );
 }

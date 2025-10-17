@@ -1,7 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { axiosBaseQuery } from "../../app/axiosBaseQuery";
 
-/** Dokładnie według Twojego API */
 export type Project = {
   id: number;
   name: string;
@@ -39,10 +38,16 @@ create: b.mutation<Project, Partial<Project>>({
         method: "post",
         data: body,
       }),
-      // po sukcesie odśwież listę
       invalidatesTags: ["Projects"],
     }),
+
+delete: b.mutation<void, number>({
+  query: (id) => ({ url: `/api/projects/${id}/`, method: "delete" }),
+  invalidatesTags: ["Projects"],
+}),
   }),
+
+
 });
 
-export const { useListQuery: useProjectsQuery, useCreateMutation, } = projectsApi;
+export const { useListQuery: useProjectsQuery, useCreateMutation, useDeleteMutation} = projectsApi;
