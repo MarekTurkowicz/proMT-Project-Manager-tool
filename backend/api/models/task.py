@@ -14,12 +14,14 @@ class Task(models.Model):
         MEDIUM = 2, "Medium"
         HIGH = 3, "High"
 
-    # ZAWSZE w projekcie
     project = models.ForeignKey(
-        "api.Project", on_delete=models.CASCADE, related_name="tasks"
+        "api.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tasks",
     )
 
-    # OPCJONALNIE „grantowe” (powiązane z finansowaniem)
     funding = models.ForeignKey(
         "api.Funding",
         on_delete=models.SET_NULL,
@@ -28,7 +30,6 @@ class Task(models.Model):
         related_name="tasks",
     )
 
-    # Jeśli powstał z „zadania finansowania” (kopii), to tu trzymamy źródło
     template = models.ForeignKey(
         "api.FundingTask",
         on_delete=models.SET_NULL,
@@ -80,7 +81,7 @@ class Task(models.Model):
         ]
 
     def __str__(self):
-        tag = self.project.name
+        tag = self.project.name if self.project else "brak projektu"
         if self.funding_id:
             tag += f" · {self.funding.name}"
         return f"{self.title} ({tag})"
