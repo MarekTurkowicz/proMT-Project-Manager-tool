@@ -14,33 +14,7 @@ class Task(models.Model):
         MEDIUM = 2, "Medium"
         HIGH = 3, "High"
 
-    project = models.ForeignKey(
-        "api.Project",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="tasks",
-    )
-
-    funding = models.ForeignKey(
-        "api.Funding",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="tasks",
-    )
-
-    template = models.ForeignKey(
-        "api.FundingTask",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="instances",
-    )
-
-    # Flaga: to zadanie ma zniknąć, gdy odłączymy to finansowanie od projektu
-    funding_scoped = models.BooleanField(default=False)
-
+    # ⬇️ CZYSTY Task — bez FK do Project/Funding
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     status = models.CharField(
@@ -50,19 +24,29 @@ class Task(models.Model):
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
 
-    # Prosta sekcja kosztów (bez dzielenia grantów po zadaniach)
+    # opcjonalne koszty/załączki
     cost_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
     cost_currency = models.CharField(max_length=3, default="PLN")
-    receipt_url = models.URLField(blank=True)  # link do skanu faktury/rachunku
+    receipt_url = models.URLField(blank=True)
     receipt_note = models.TextField(blank=True)
 
+    # przypisania
     assignees = models.ManyToManyField(
         settings.AUTH_USER_MODEL, blank=True, related_name="tasks"
     )
     est_hours = models.DecimalField(
         max_digits=6, decimal_places=2, null=True, blank=True
+    )
+
+    # jeśli używasz „szablonów zadań finansowania”
+    template = models.ForeignKey(
+        "api.FundingTask",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="instances",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,7 +65,82 @@ class Task(models.Model):
         ]
 
     def __str__(self):
-        tag = self.project.name if self.project else "brak projektu"
+        return self.title
+
+
+class TaskScope(models.Model):
+    """
+    Dokładnie JEDEN kontekst dla Task:
+    - project XOR funding XOR project_funding
+    (brak rekordu TaskScope => task „nieprzydzielony”)
+    """
+
+    task = models.OneToOneField(
+        "api.Task", on_delete=models.CASCADE, related_name="scope"
+    )
+
+    project = models.ForeignKey(
+        "api.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="task_scopes",
+    )
+    funding = models.ForeignKey(
+        "api.Funding",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="task_scopes",
+    )
+    project_funding = models.ForeignKey(
+        "api.ProjectFunding",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="task_scopes",
+    )
+
+    # znacznik: sklonowane z finansowania (po ProjectFunding)
+    funding_scoped = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="taskscope_exactly_one",
+                check=(
+                    (
+                        Q(project__isnull=False)
+                        & Q(funding__isnull=True)
+                        & Q(project_funding__isnull=True)
+                    )
+                    | (
+                        Q(project__isnull=True)
+                        & Q(funding__isnull=False)
+                        & Q(project_funding__isnull=True)
+                    )
+                    | (
+                        Q(project__isnull=True)
+                        & Q(funding__isnull=True)
+                        & Q(project_funding__isnull=False)
+                    )
+                ),
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project"]),
+            models.Index(fields=["funding"]),
+            models.Index(fields=["project_funding"]),
+            models.Index(fields=["funding_scoped"]),
+        ]
+
+    def __str__(self):
+        if self.project_id:
+            return f"scope:project={self.project_id}"
         if self.funding_id:
-            tag += f" · {self.funding.name}"
-        return f"{self.title} ({tag})"
+            return f"scope:funding={self.funding_id}"
+        if self.project_funding_id:
+            return f"scope:PF={self.project_funding_id}"
+        return "scope:?"

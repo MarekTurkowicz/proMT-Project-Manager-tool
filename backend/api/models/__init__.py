@@ -1,6 +1,6 @@
 from .funding import Funding, FundingTask, ProjectFunding
 from .project import Project
-from .task import Task
+from .task import Task, TaskScope
 
 __all__ = [
     "Funding",
@@ -8,4 +8,5 @@ __all__ = [
     "FundingTask",
     "Project",
     "Task",
+    "TaskScope",
 ]

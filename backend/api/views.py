@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
-
+from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions
@@ -185,20 +185,16 @@ class ProjectFundingViewSet(viewsets.ModelViewSet):
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = (
-        Task.objects.select_related("project", "funding", "template")
-        .prefetch_related("assignees")
-        .all()
+        Task.objects.all()
         .order_by("-created_at")
+        .select_related("template")
+        .prefetch_related(
+            "assignees", "scope__project", "scope__funding", "scope__project_funding"
+        )
     )
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
-    search_fields = [
-        "title",
-        "description",
-        "project__name",
-        "funding__name",
-        "assignees__username",
-    ]
+    permission_classes = [permissions.IsAuthenticated]
+    search_fields = ["title", "description"]
     ordering_fields = [
         "created_at",
         "updated_at",
@@ -213,11 +209,29 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         project_id = self.request.query_params.get("project")
         funding_id = self.request.query_params.get("funding")
+        project_funding_id = self.request.query_params.get("project_funding")
+        unassigned = self.request.query_params.get("unassigned")
+        funding_scoped = self.request.query_params.get("funding_scoped")
         status_ = self.request.query_params.get("status")
+
         if project_id:
-            qs = qs.filter(project_id=project_id)
+            qs = qs.filter(
+                Q(scope__project_id=project_id)
+                | Q(scope__project_funding__project_id=project_id)
+            )
         if funding_id:
-            qs = qs.filter(funding_id=funding_id)
+            qs = qs.filter(
+                Q(scope__funding_id=funding_id)
+                | Q(scope__project_funding__funding_id=funding_id)
+            )
+        if project_funding_id:
+            qs = qs.filter(scope__project_funding_id=project_funding_id)
+        if unassigned in ("1", "true", "True"):
+            qs = qs.filter(scope__isnull=True)
+        if funding_scoped in ("1", "true", "True"):
+            qs = qs.filter(scope__funding_scoped=True)
+        if funding_scoped in ("0", "false", "False"):
+            qs = qs.filter(scope__funding_scoped=False)
         if status_:
             qs = qs.filter(status=status_)
         return qs
