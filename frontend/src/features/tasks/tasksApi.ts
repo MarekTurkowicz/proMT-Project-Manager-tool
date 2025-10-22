@@ -46,14 +46,20 @@ export const tasksApi = createApi({
     }),
 
     // DELETE
-
     deleteTask: b.mutation<void, number>({
       query: (id) => ({
         url: `/api/tasks/${id}/`,
         method: "DELETE",
       }),
       invalidatesTags: [{type: "Task", id: "LIST"}],
-
+    }),
+    updateTask: b.mutation<Task, {id: number, patch: Partial<CreateTaskPayload>}>({
+      query: ({ id, patch}) => ({
+        url: `/api/tasks/${id}/`,
+        method: "PATCH",
+        data: patch,
+      }),
+      invalidatesTags: [{type: "Task", id: "LIST"}],
     }),
 
     // LEKKIE LISTY DO SELECTÓW (nazwa + id)
@@ -76,4 +82,5 @@ export const {
   usePickProjectsQuery,
   usePickFundingsQuery,
   useDeleteTaskMutation,
+  useUpdateTaskMutation,
 } = tasksApi;

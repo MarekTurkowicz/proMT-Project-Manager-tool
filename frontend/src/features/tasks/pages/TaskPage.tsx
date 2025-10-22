@@ -1,15 +1,20 @@
 import { useMemo, useState } from "react";
-import { useListTasksQuery } from "../tasksApi";
-import type { Task } from "../types";
+import {
+  useListTasksQuery,
+  useCreateTaskMutation,
+  useDeleteTaskMutation,
+  useUpdateTaskMutation,
+} from "../tasksApi";
+import type { Task, CreateTaskPayload } from "../types";
 import "./TaskPage.css";
-import AddTaskModal from "../components/AddTaskModal";
-import { useDeleteTaskMutation } from "../tasksApi";
 import toast from "react-hot-toast";
+import AddTaskModal from "../components/AddTaskModal";
+import EditTaskModal from "../components/EditTaskModal";
 
 type ScopeFilter = "all" | "project" | "funding" | "unassigned";
 
 export default function TasksPage() {
-  // --- FILTRY / SORTOWANIE ---
+  // --- FILTRY / SORT ---
   const [scope, setScope] = useState<ScopeFilter>("all");
   const [projectId, setProjectId] = useState<number | "">("");
   const [fundingId, setFundingId] = useState<number | "">("");
@@ -22,7 +27,6 @@ export default function TasksPage() {
     | "-priority"
   >("-created_at");
 
-  // query params -> RTK Query
   const params = useMemo(() => {
     switch (scope) {
       case "unassigned":
@@ -44,18 +48,31 @@ export default function TasksPage() {
     useListTasksQuery(params);
   const items: Task[] = data?.results ?? [];
 
-  // --- MODAL DODAWANIA ---
+  // --- CREATE (Add modal) ---
   const [openAdd, setOpenAdd] = useState(false);
+  const [createTask] = useCreateTaskMutation();
 
-  // Delete
+  const handleCreate = async (payload: CreateTaskPayload) => {
+    try {
+      await createTask(payload).unwrap();
+      toast.success("Task added");
+      setOpenAdd(false);
+      refetch();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to add task");
+    }
+  };
+
+  // --- DELETE ---
   const [deleteTask] = useDeleteTaskMutation();
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleDelete = async (id: number) => {
     const ok = window.confirm("Delete this task?");
     if (!ok) return;
-
     try {
+      setDeletingId(id);
       await deleteTask(id).unwrap();
       toast.success("Task deleted");
       refetch();
@@ -64,6 +81,23 @@ export default function TasksPage() {
       toast.error("Delete failed");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  // --- EDIT (Edit modal) ---
+  const [updateTask] = useUpdateTaskMutation();
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const handleEditSubmit = async (patch: Partial<CreateTaskPayload>) => {
+    if (!editingTask) return;
+    try {
+      await updateTask({ id: editingTask.id, patch }).unwrap();
+      toast.success("Task updated");
+      setEditingTask(null);
+      refetch();
+    } catch (e) {
+      console.error(e);
+      toast.error("Update failed");
     }
   };
 
@@ -165,14 +199,11 @@ export default function TasksPage() {
           </div>
         </header>
 
-        {/* MODAL DODAWANIA (z listą projektów/finansowań w środku) */}
+        {/* ADD MODAL (opcjonalnie – jeśli używasz AddTaskModal) */}
         <AddTaskModal
           open={openAdd}
           onClose={() => setOpenAdd(false)}
-          onCreated={() => {
-            setOpenAdd(false);
-            refetch();
-          }}
+          onSubmit={handleCreate}
         />
 
         {isLoading ? (
@@ -189,9 +220,20 @@ export default function TasksPage() {
                 task={t}
                 onDelete={handleDelete}
                 deleting={deletingId === t.id}
+                onStartEdit={() => setEditingTask(t)}
               />
             ))}
           </div>
+        )}
+
+        {/* EDIT MODAL — renderuj tylko, gdy mamy task */}
+        {editingTask && (
+          <EditTaskModal
+            open={true}
+            onClose={() => setEditingTask(null)}
+            task={editingTask}
+            onSubmit={handleEditSubmit}
+          />
         )}
       </main>
     </div>
@@ -210,15 +252,18 @@ function TaskCard({
   task,
   onDelete,
   deleting,
+  onStartEdit,
 }: {
   task: Task;
   onDelete: (id: number) => void;
   deleting: boolean;
+  onStartEdit: () => void;
 }) {
+  const statusSafe = (task.status ?? "todo") as "todo" | "doing" | "done";
   const statusCls =
-    task.status === "done"
+    statusSafe === "done"
       ? "chip--green"
-      : task.status === "doing"
+      : statusSafe === "doing"
       ? "chip--amber"
       : "chip--gray";
 
@@ -241,7 +286,7 @@ function TaskCard({
           <h3>{task.title}</h3>
           {task.description && <p className="desc">{task.description}</p>}
           <div className="meta">
-            {chip(statusCls, task.status.toUpperCase())}
+            {chip(statusCls, statusSafe.toUpperCase())}
             {prio}
             {projectName && (
               <span className="meta-text">• Project: {projectName}</span>
@@ -257,13 +302,16 @@ function TaskCard({
 
         {/* ACTIONS po prawej */}
         <div className="task-actions">
+          <button className="btn" onClick={onStartEdit} title="Edit">
+            Edit
+          </button>
           <button
             className="btn-danger"
             onClick={() => onDelete(task.id)}
             disabled={deleting}
             title="Delete task"
           >
-            {deleting ? "Deleting..." : "Delete"}
+            {deleting ? "Deleting…" : "Delete"}
           </button>
         </div>
       </div>
