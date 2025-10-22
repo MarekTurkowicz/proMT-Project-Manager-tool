@@ -1,47 +1,44 @@
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
-import ProjectsPage from "./features/projects/ProjectsPage";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./features/auth/LoginPage";
-import ProtectedRoute from "./ProtectedRoute";
-import ProjectEditPage from "./features/projects/ProjectEditPage";
-import { Toaster } from "react-hot-toast";
+import ProtectedRoute from "./features/auth/ProtectedRoute";
+import DashboardLayout from "./features/dashboard/components/DashboardLayout";
+import DashboardHome from "./features/dashboard/pages/DashboardHome";
+import FundingsPlaceholder from "./features/fundings/pages/FundingsPlaceholder";
+import TasksPage from "./features/tasks/pages/TaskPage";
+import ProjectsPage from "./features/projects/ProjectsPage";
 
-function Home() {
-  return (
-    <div style={{ padding: 24 }}>
-      <h1>Home</h1>
-      <p>
-        <Link to="/projects">Idź do projektów →</Link>
-      </p>
-    </div>
-  );
-}
-
+// ---
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        {/* Strona główna */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
         <Route path="/login" element={<LoginPage />} />
+
         <Route
-          path="/projects"
+          path="/dashboard"
           element={
             <ProtectedRoute>
-              <ProjectsPage />
+              <DashboardLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          {/* domyślny ekran po zalogowaniu */}
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<DashboardHome />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="fundings" element={<FundingsPlaceholder />} />
+          <Route path="tasks" element={<TasksPage />} />
+        </Route>
+
+        {/* Fallback */}
         <Route
-          path="/projects/:id/edit"
-          element={
-            <ProtectedRoute>
-              <ProjectEditPage />
-            </ProtectedRoute>
-          }
+          path="*"
+          element={<div style={{ padding: 24 }}>Not found</div>}
         />
-        <Route path="/" element={<Navigate to="/projects" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <Toaster position="top-right" />
     </BrowserRouter>
   );
 }

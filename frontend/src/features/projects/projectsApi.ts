@@ -1,4 +1,3 @@
-// frontend/src/features/projects/projectsApi.ts
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { axiosBaseQuery } from "../../app/axiosBaseQuery";
 
@@ -20,7 +19,6 @@ export const projectsApi = createApi({
   baseQuery: axiosBaseQuery(),
   tagTypes: ["Projects", "Project"],
   endpoints: (b) => ({
-    // już masz:
     projects: b.query<{ count: number; results: Project[] }, void>({
       query: () => ({ url: "/api/projects/" }),
       providesTags: ["Projects"],

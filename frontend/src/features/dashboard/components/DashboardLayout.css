@@ -1,0 +1,56 @@
+.dashboard {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+  background: #fafafa;
+  color: #222;
+  font-family: system-ui, sans-serif;
+  width: 100%;
+  height: 100%;
+}
+
+/* Lewa kolumna */
+.dashboard__sidebar {
+  border-right: 1px solid #e5e7eb;
+  padding: 16px;
+  background: white;
+}
+
+.dashboard__title {
+  margin: 0 0 16px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #111;
+}
+
+/* Nawigacja */
+.dashboard__nav {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard__link {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #444;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* aktywny NavLink — React Router automatycznie dodaje .active */
+.dashboard__link.active {
+  color: #111;
+  background: #f2f4f7;
+  font-weight: 500;
+}
+
+/* hover */
+.dashboard__link:hover {
+  background: #f9fafb;
+}
+
+/* Główna sekcja */
+.dashboard__content {
+  padding: 24px;
+}

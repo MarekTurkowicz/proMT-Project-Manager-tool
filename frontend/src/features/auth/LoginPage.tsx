@@ -48,7 +48,7 @@ export default function LoginPage() {
       await login({ username, password }).unwrap();
       sessionStorage.removeItem(FAIL_KEY);
       toast.success("Zalogowano!");
-      navigate("/projects", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
       const status = getHttpStatus(err);
       const nextFails = fails + 1;
