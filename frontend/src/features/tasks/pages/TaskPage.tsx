@@ -88,10 +88,13 @@ export default function TasksPage() {
   const [updateTask] = useUpdateTaskMutation();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const handleEditSubmit = async (patch: Partial<CreateTaskPayload>) => {
-    if (!editingTask) return;
+  // zgodne z EditTaskModal: (id, patch)
+  const handleEditSubmit = async (
+    id: number,
+    patch: Partial<CreateTaskPayload>
+  ) => {
     try {
-      await updateTask({ id: editingTask.id, patch }).unwrap();
+      await updateTask({ id, patch }).unwrap();
       toast.success("Task updated");
       setEditingTask(null);
       refetch();
@@ -191,7 +194,7 @@ export default function TasksPage() {
           <h1>Tasks</h1>
           <div className="header-actions">
             <button className="btn-primary" onClick={() => setOpenAdd(true)}>
-              + Add task
+              Add task
             </button>
             <span className="muted">
               {isFetching ? "Loading…" : `${data?.count ?? 0} total`}
@@ -199,34 +202,37 @@ export default function TasksPage() {
           </div>
         </header>
 
-        {/* ADD MODAL (opcjonalnie – jeśli używasz AddTaskModal) */}
-        <AddTaskModal
-          open={openAdd}
-          onClose={() => setOpenAdd(false)}
-          onSubmit={handleCreate}
-        />
+        {/* przewijany obszar */}
+        <div className="tasks-scroll">
+          {/* ADD MODAL */}
+          <AddTaskModal
+            open={openAdd}
+            onClose={() => setOpenAdd(false)}
+            onSubmit={handleCreate}
+          />
 
-        {isLoading ? (
-          <div className="card centered muted">Loading…</div>
-        ) : error ? (
-          <div className="card error">Failed to load tasks.</div>
-        ) : items.length === 0 ? (
-          <div className="card centered muted">No tasks.</div>
-        ) : (
-          <div className="tasks-list">
-            {items.map((t) => (
-              <TaskCard
-                key={t.id}
-                task={t}
-                onDelete={handleDelete}
-                deleting={deletingId === t.id}
-                onStartEdit={() => setEditingTask(t)}
-              />
-            ))}
-          </div>
-        )}
+          {isLoading ? (
+            <div className="card centered muted">Loading…</div>
+          ) : error ? (
+            <div className="card error">Failed to load tasks.</div>
+          ) : items.length === 0 ? (
+            <div className="card centered muted">No tasks.</div>
+          ) : (
+            <div className="tasks-list">
+              {items.map((t) => (
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  onDelete={handleDelete}
+                  deleting={deletingId === t.id}
+                  onStartEdit={() => setEditingTask(t)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* EDIT MODAL — renderuj tylko, gdy mamy task */}
+        {/* EDIT MODAL */}
         {editingTask && (
           <EditTaskModal
             open={true}
@@ -300,7 +306,7 @@ function TaskCard({
           </div>
         </div>
 
-        {/* ACTIONS po prawej */}
+        {/* ACTIONS */}
         <div className="task-actions">
           <button className="btn" onClick={onStartEdit} title="Edit">
             Edit

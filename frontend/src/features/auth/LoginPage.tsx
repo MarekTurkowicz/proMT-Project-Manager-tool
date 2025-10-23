@@ -25,7 +25,7 @@ export default function LoginPage() {
 
   if (meLoading) return <div style={{ padding: 24 }}>Ładowanie…</div>;
   if (me && !meError) {
-    navigate("/projects", { replace: true });
+    navigate("/dashboard", { replace: true });
     return null;
   }
 
