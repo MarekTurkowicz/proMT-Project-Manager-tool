@@ -1,4 +1,5 @@
 // src/features/tasks/components/AddTaskModal.tsx
+import { useEffect } from "react";
 import {
   useForm,
   type FieldErrors,
@@ -14,9 +15,34 @@ import "./AddTaskModal.css";
 type Scope = "unassigned" | "project" | "funding";
 const emptyToNull = (v?: string) => (!v || v.trim() === "" ? null : v);
 
-/** Schemat Zod (bez deprecated; code: "custom") */
-const TaskCreateSchema = z
-  .object({
+export interface AddTaskModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (payload: CreateTaskPayload) => Promise<void> | void;
+
+  /** domyślne ustawienie scope przy otwarciu (na TaskPage nie podawaj — zostanie 'unassigned') */
+  defaultScope?: Scope;
+  /** gdy true — ukrywa radia i wymusza scope (np. na Funding/Project detail) */
+  lockScope?: boolean;
+  /** automatyczne wypełnienie selecta/ID przy wymuszeniu scope */
+  defaultFundingId?: number;
+  defaultProjectId?: number;
+}
+
+export default function AddTaskModal({
+  open,
+  onClose,
+  onSubmit,
+  defaultScope,
+  lockScope,
+  defaultFundingId,
+  defaultProjectId,
+}: AddTaskModalProps) {
+  const { data: projectOptions = [], isLoading: lp } = usePickProjectsQuery();
+  const { data: fundingOptions = [], isLoading: lf } = usePickFundingsQuery();
+
+  // --- Schema (musi widzieć lockScope) ---
+  const BaseTaskCreateSchema = z.object({
     title: z.string().trim().min(3, "Title must be at least 3 characters"),
     description: z.string().optional(),
 
@@ -60,8 +86,9 @@ const TaskCreateSchema = z
     scope: z.enum(["unassigned", "project", "funding"]),
     projectId: z.string().optional(), // "" lub "123"
     fundingId: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
+  });
+
+  const TaskCreateSchema = BaseTaskCreateSchema.superRefine((data, ctx) => {
     if (data.start_date && data.due_date && data.start_date > data.due_date) {
       ctx.addIssue({
         code: "custom",
@@ -69,6 +96,10 @@ const TaskCreateSchema = z
         message: "End date cannot be before start date",
       });
     }
+
+    // gdy scope jest wymuszony na zewnątrz, nie wymagaj wyboru z selectów
+    if (lockScope) return;
+
     if (
       data.scope === "project" &&
       (!data.projectId || data.projectId === "")
@@ -91,23 +122,9 @@ const TaskCreateSchema = z
     }
   });
 
-type FormValues = z.infer<typeof TaskCreateSchema>;
+  type FormValues = z.infer<typeof TaskCreateSchema>;
 
-export interface AddTaskModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (payload: CreateTaskPayload) => Promise<void> | void;
-}
-
-export default function AddTaskModal({
-  open,
-  onClose,
-  onSubmit,
-}: AddTaskModalProps) {
-  const { data: projectOptions = [], isLoading: lp } = usePickProjectsQuery();
-  const { data: fundingOptions = [], isLoading: lf } = usePickFundingsQuery();
-
-  // Używamy generyka + rzut na Resolver<FormValues>, żeby TS znał pola i ścieżki
+  // --- RHF ---
   const {
     register,
     handleSubmit,
@@ -130,11 +147,26 @@ export default function AddTaskModal({
       cost_currency: "PLN",
       receipt_url: "",
       receipt_note: "",
-      scope: "unassigned",
-      projectId: "",
-      fundingId: "",
+      scope: defaultScope ?? "unassigned",
+      projectId: defaultProjectId ? String(defaultProjectId) : "",
+      fundingId: defaultFundingId ? String(defaultFundingId) : "",
     },
   });
+
+  // auto-wstrzyknięcie scope + ID przy każdym otwarciu
+  useEffect(() => {
+    if (!open) return;
+    reset((curr) => ({
+      ...curr,
+      scope: defaultScope ?? curr.scope ?? "unassigned",
+      projectId: defaultProjectId
+        ? String(defaultProjectId)
+        : curr.projectId ?? "",
+      fundingId: defaultFundingId
+        ? String(defaultFundingId)
+        : curr.fundingId ?? "",
+    }));
+  }, [open, defaultScope, defaultFundingId, defaultProjectId, reset]);
 
   const scope = watch("scope") as Scope;
 
@@ -168,6 +200,18 @@ export default function AddTaskModal({
       payload.project_funding = null;
     } else {
       payload.project = null;
+      payload.funding = null;
+      payload.project_funding = null;
+    }
+
+    // nadpisanie, jeśli scope jest zablokowany z góry
+    if (lockScope && defaultScope === "funding" && defaultFundingId) {
+      payload.project = null;
+      payload.funding = defaultFundingId;
+      payload.project_funding = null;
+    }
+    if (lockScope && defaultScope === "project" && defaultProjectId) {
+      payload.project = defaultProjectId;
       payload.funding = null;
       payload.project_funding = null;
     }
@@ -209,6 +253,7 @@ export default function AddTaskModal({
             x
           </button>
         </div>
+
         <form className="modal-form" onSubmit={handleSubmit(submit, onInvalid)}>
           <div className="modal-body">
             {/* Title */}
@@ -384,30 +429,41 @@ export default function AddTaskModal({
               />
             </div>
 
-            {/* Scope */}
-            <div>
-              <label className="form-label">Assign to</label>
-              <div className="scope-group">
-                <label className="scope-item">
-                  <input
-                    type="radio"
-                    value="unassigned"
-                    {...register("scope")}
-                  />
-                  <span>Unassigned</span>
-                </label>
-                <label className="scope-item">
-                  <input type="radio" value="project" {...register("scope")} />
-                  <span>Project</span>
-                </label>
-                <label className="scope-item">
-                  <input type="radio" value="funding" {...register("scope")} />
-                  <span>Funding</span>
-                </label>
+            {/* Scope — ukryty przy lockScope */}
+            {!lockScope && (
+              <div>
+                <label className="form-label">Assign to</label>
+                <div className="scope-group">
+                  <label className="scope-item">
+                    <input
+                      type="radio"
+                      value="unassigned"
+                      {...register("scope")}
+                    />
+                    <span>Unassigned</span>
+                  </label>
+                  <label className="scope-item">
+                    <input
+                      type="radio"
+                      value="project"
+                      {...register("scope")}
+                    />
+                    <span>Project</span>
+                  </label>
+                  <label className="scope-item">
+                    <input
+                      type="radio"
+                      value="funding"
+                      {...register("scope")}
+                    />
+                    <span>Funding</span>
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
-            {scope === "project" && (
+            {/* Project select — tylko gdy scope=project i brak lockScope */}
+            {scope === "project" && !lockScope && (
               <div>
                 <label className="form-label">Project</label>
                 <select
@@ -434,7 +490,8 @@ export default function AddTaskModal({
               </div>
             )}
 
-            {scope === "funding" && (
+            {/* Funding select — tylko gdy scope=funding i brak lockScope */}
+            {scope === "funding" && !lockScope && (
               <div>
                 <label className="form-label">Funding</label>
                 <select
@@ -458,6 +515,18 @@ export default function AddTaskModal({
                     {String(errors.fundingId.message)}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Informacja gdy scope zablokowany */}
+            {lockScope && defaultScope === "funding" && defaultFundingId && (
+              <div className="muted">
+                This task will be assigned to funding #{defaultFundingId}
+              </div>
+            )}
+            {lockScope && defaultScope === "project" && defaultProjectId && (
+              <div className="muted">
+                This task will be assigned to project #{defaultProjectId}
               </div>
             )}
           </div>

@@ -19,6 +19,7 @@ class FundingSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "tasks",
+            "type",
         ]
 
     def get_tasks(self, obj):

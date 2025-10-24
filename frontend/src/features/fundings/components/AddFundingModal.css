@@ -1,0 +1,134 @@
+/* src/features/fundings/components/AddFundingModal.css */
+/* Możesz pominąć ten plik i użyć AddTaskModal.css – klasy są te same. */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal-window {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 760px);
+  max-height: min(92vh, 860px);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .modal-window {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+}
+
+.modal-header,
+.modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #ffffff;
+}
+.modal-header {
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid #e5e7eb;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: #fafafa;
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+.icon-btn {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: #4b5563;
+}
+.icon-btn:hover { color: #111827; }
+
+.modal-form { display: contents; }
+.modal-body {
+  overflow-y: auto;
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.form-grid { display: grid; gap: 14px; }
+@media (min-width: 640px) {
+  .form-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.form-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 0.97rem;
+  outline: none;
+  background: #fff;
+}
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.input-invalid { border-color: #dc2626 !important; background-color: #fef2f2; }
+.error-text { color: #dc2626; font-size: 0.87rem; margin-top: 3px; }

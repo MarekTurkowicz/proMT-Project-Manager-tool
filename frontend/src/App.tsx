@@ -3,9 +3,9 @@ import LoginPage from "./features/auth/LoginPage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import DashboardLayout from "./features/dashboard/components/DashboardLayout";
 import DashboardHome from "./features/dashboard/pages/DashboardHome";
-import FundingsPlaceholder from "./features/fundings/pages/FundingsPlaceholder";
 import TasksPage from "./features/tasks/pages/TaskPage";
 import ProjectsPage from "./features/projects/ProjectsPage";
+import FundingsPage from "./features/fundings/pages/FundingPage";
 
 // ---
 export default function App() {
@@ -29,7 +29,7 @@ export default function App() {
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<DashboardHome />} />
           <Route path="projects" element={<ProjectsPage />} />
-          <Route path="fundings" element={<FundingsPlaceholder />} />
+          <Route path="fundings" element={<FundingsPage />} />
           <Route path="tasks" element={<TasksPage />} />
         </Route>
 
