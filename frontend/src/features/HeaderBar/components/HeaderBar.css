@@ -1,0 +1,67 @@
+.hb{
+  position: sticky; top: 0; z-index: 60;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 0 rgba(15,23,42,0.03);
+}
+
+.hb__logo{
+  font-weight: 700; color: #0f172a; text-decoration: none; font-size: 1rem;
+}
+
+.hb__right{ display: flex; align-items: center; gap: 10px; }
+
+/* konto */
+.hb__account{ position: relative; }
+.hb__accountBtn{
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+.hb__accountBtn:hover{ background: #f3f4f6; }
+.hb__avatar{
+  width: 32px; height: 32px; border-radius: 999px; object-fit: cover;
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.hb__name{ font-size: .95rem; color: #111827; }
+.hb__chev{ width: 16px; height: 16px; opacity: .7; transition: transform .15s ease; }
+.hb__chev--open{ transform: rotate(180deg); }
+
+/* menu */
+.hb__menu{
+  position: absolute; right: 0; top: calc(100% + 8px);
+  background: #fff;
+  border: 1px solid #e6eef5;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(2,6,23,0.08);
+  min-width: 180px;
+  padding: 6px;
+  display: flex; flex-direction: column; gap: 6px;
+  z-index: 70;
+}
+.hb__menuItem{
+  background: transparent; border: none; text-align: left;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  color: #0f172a;
+}
+.hb__menuItem:hover{ background: #f8fafc; }
+.hb__logout{ color: #b91c1c; }
+.hb__logout:disabled{ opacity: .6; cursor: not-allowed; }
+
+/* link logowania (gdy brak me) */
+.hb__btnLink{
+  border: 1px solid #111827; background: #111827; color: #fff;
+  border-radius: 10px; padding: 6px 10px; font-weight: 600; text-decoration: none;
+}
+
+/* mobile */
+@media (max-width:640px){
+  .hb{ padding: 0 10px; }
+  .hb__name{ display: none; }
+}

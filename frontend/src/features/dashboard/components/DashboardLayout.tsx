@@ -1,9 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
+import HeaderBar from "../../HeaderBar/components/headerBar";
 import "./DashboardLayout.css";
 
 export default function DashboardLayout() {
   return (
     <div className="layout grid grid-cols-[240px_minmax(0,1fr)] min-h-screen bg-slate-50 text-slate-900">
+      {/* LEWA KOLUMNA: sidebar */}
       <aside className="border-r border-slate-200 bg-white">
         <div className="p-6">
           <h2 className="text-xl font-semibold">Dashboard</h2>
@@ -25,10 +27,16 @@ export default function DashboardLayout() {
         </nav>
       </aside>
 
-      {/* kluczowe: bez żadnych max-w, pełna kolumna */}
-      <main className="p-6 w-full">
-        <Outlet />
-      </main>
+      {/* PRAWA KOLUMNA: header + content */}
+      <div className="flex flex-col min-w-0">
+        {/* ⬇️ globalny, lekki pasek użytkownika (sticky) */}
+        <HeaderBar />
+
+        {/* Główna zawartość stron dashboardu */}
+        <main className="p-6 w-full">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
