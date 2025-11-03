@@ -1,0 +1,269 @@
+:root {
+  --ink: #0f172a;
+  --muted: #64748b;
+  --bg: #f8fafc;
+  --border: #e5e7eb;
+  --shadow: 0 1px 3px rgba(0,0,0,.06);
+
+  --header-h: 56px;   /* HeaderBar wysokość */
+  --main-pad: 24px;   /* p-6 z DashboardLayout */
+}
+
+/* Layout */
+.projects-page {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  min-height: calc(100dvh - var(--main-pad) * 2);
+  background: var(--bg);
+}
+
+/* Sidebar */
+.projects-sidebar {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  height: fit-content;
+}
+.projects-sidebar h2 {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Chipy filtrów statusu */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: .85rem;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.chip-btn:hover { background: #f8fafc; }
+.chip-btn.is-active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+/* Only mine */
+.switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: .95rem;
+  color: #111827;
+}
+
+.sort { margin-top: 14px; display: grid; gap: 6px; }
+.sort label { font-size: .85rem; color: #475569; }
+.sort select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: .9rem;
+  outline: none;
+}
+.sort select:focus { box-shadow: 0 0 0 3px rgba(100,116,139,.2); }
+
+/* Main */
+.projects-main {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Header – kompaktowy */
+.projects-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.projects-header--compact {
+  padding: 4px 4px; /* mało pionowych odstępów */
+}
+.projects-header h1 {
+  margin: 0;
+  font-size: 1.2rem; /* mniejszy tytuł */
+  font-weight: 600;
+  color: var(--ink);
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Input i przycisk – ta sama wysokość */
+.form-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  height: 40px;            /* ✅ ustalona wysokość */
+  padding: 0 10px;
+  font-size: .95rem;
+  outline: none;
+}
+.form-input--sm {
+  width: 220px;
+}
+.form-input:focus {
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+  border-color: #3b82f6;
+}
+
+/* Scroll wewnątrz karty */
+.projects-scroll {
+  margin-top: 10px;
+  min-height: 0;
+  overflow: auto;
+  max-height: calc(100dvh - var(--header-h) - var(--main-pad) * 2 - 10px - 14px);
+}
+
+/* Lista / karty */
+.projects-list {
+  display: grid;
+  gap: 10px;
+}
+
+.task-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.task-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.task-info h3 {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+}
+.desc {
+  margin: .25rem 0 0;
+  color: #475569;
+  font-size: .95rem;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  align-items: center;
+}
+.meta-text {
+  font-size: .8rem;
+  color: #64748b;
+}
+
+/* Przyciski */
+.btn {
+  background: transparent;
+  color: #475569;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  height: 40px; /* ✅ ten sam rozmiar co input */
+  padding: 0 12px;
+  font-size: .95rem;
+  cursor: pointer;
+  transition: all .15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* ✅ Główny niebieski przycisk */
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  height: 40px; /* ✅ dopasowany do inputa */
+  padding: 0 24px;
+  min-width: 140px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color .15s ease;
+}
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Czerwony */
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border-radius: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  transition: background-color .15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-danger:hover { background: #dc2626; }
+.btn-danger:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Karty komunikatów */
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.card.error {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.centered {
+  text-align: center;
+  padding: 22px 0;
+}
+.muted {
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* responsive */
+@media (max-width: 960px) {
+  .projects-page { grid-template-columns: 1fr; }
+  .form-input--sm { width: 160px; }
+}
