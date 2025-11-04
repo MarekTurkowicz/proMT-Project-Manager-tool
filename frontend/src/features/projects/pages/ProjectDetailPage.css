@@ -1,0 +1,65 @@
+.pd-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;        /* ważne dla scrollowania dzieci */
+  height: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.pd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.pd-title { display: flex; gap: 10px; align-items: center; }
+.pd-title h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.pd-status {
+  border-radius: 999px; padding: 4px 10px; font-size: .8rem; font-weight: 600;
+  background: #e5e7eb; color: #111827;
+}
+.pd-status--new { background:#dbeafe; color:#1e3a8a; }
+.pd-status--active { background:#dcfce7; color:#14532d; }
+.pd-status--closed { background:#fee2e2; color:#991b1b; }
+
+.pd-actions .btn {
+  background: transparent;
+  color: #475569;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.pd-actions .btn:hover { background: #f1f5f9; color: #0f172a; }
+
+.pd-tabs {
+  display: flex; gap: 8px; margin-top: 10px; border-bottom: 1px solid #e5e7eb;
+}
+.pd-tab {
+  padding: 8px 12px; border-radius: 10px 10px 0 0; color: #475569; text-decoration: none;
+}
+.pd-tab.is-active {
+  background: #eef2ff; color: #3730a3; font-weight: 600;
+}
+
+.pd-content {
+  margin-top: 10px;
+  min-height: 0;
+  overflow: auto;     /* scroll TUTAJ */
+  display: grid;
+  gap: 12px;
+}
+
+/* util */
+.card {
+  background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.centered { text-align:center; padding:22px 0; }
+.muted { color:#64748b; }

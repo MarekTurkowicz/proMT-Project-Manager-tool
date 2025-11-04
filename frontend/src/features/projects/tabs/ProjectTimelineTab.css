@@ -1,0 +1,836 @@
+/* === Kontener / karta === */
+
+.timeline-tab.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  color: #111827;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    sans-serif;
+}
+
+/* === Toolbar === */
+
+.tls-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  column-gap: 0.8rem;
+}
+
+.tls-toolbar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tls-toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.tls-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Przyciski */
+
+.btn-group {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.05s ease;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.btn:active {
+  transform: translateY(0.5px);
+  box-shadow: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: #e5e7eb;
+}
+
+.btn-ghost:hover {
+  background: #f3f4f6;
+  border-color: #cbd5f5;
+}
+
+.btn-icon {
+  padding-inline: 0.55rem;
+}
+
+.btn-small {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.btn-outline {
+  background: #ffffff;
+  border-color: #d1d5db;
+}
+
+/* przycisk dodawania na osi – mocne wyróżnienie */
+
+.btn-add-timeline {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #f9fafb;
+}
+
+.btn-add-timeline:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.btn-add-timeline.is-active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4);
+}
+
+/* Snap toggle */
+
+.snap-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
+.snap-toggle input {
+  accent-color: #3b82f6;
+  width: 14px;
+  height: 14px;
+}
+
+/* Filtrowanie */
+
+.tls-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  margin-left: 0.25rem;
+}
+
+.tls-filter-icon {
+  font-size: 0.8rem;
+}
+
+.tls-filter input {
+  border: none;
+  outline: none;
+  font-size: 0.8rem;
+  background: transparent;
+  color: #111827;
+  min-width: 140px;
+}
+
+/* Toolbar right */
+
+.muted {
+  color: #6b7280;
+}
+
+.small {
+  font-size: 0.78rem;
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  background: #e5e7eb;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.74rem;
+  border: 1px solid transparent;
+}
+
+.badge-light {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+}
+
+.badge-primary {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* === Layout główny === */
+
+.tls-content {
+  display: flex;
+  align-items: stretch;
+  min-height: 340px;
+}
+
+/* === Timeline area === */
+
+.tls-main-wrapper {
+  position: relative;
+  flex: 1;
+  /* 👉 większa oś w dół */
+  height: clamp(680px, 80vh, 820px);
+  padding: 0.6rem;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.tls-main {
+  height: 100%;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+/* Tooltip (zakres dat) */
+
+.tl-tooltip {
+  position: absolute;
+  top: 0.9rem;
+  right: 1.1rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  background: #111827;
+  color: #f9fafb;
+  border: 1px solid #9ca3af;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 10;
+}
+
+/* === vis-timeline (jasny, delikatny) === */
+
+.tls-main .vis-timeline {
+  border: none;
+  background: #ffffff;
+}
+
+.vis-panel.vis-center,
+.vis-panel.vis-top {
+  border-color: #e5e7eb;
+}
+
+.vis-time-axis .vis-text {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+/* wyśrodkowanie miesięcy (major labels) */
+.vis-time-axis .vis-major .vis-text {
+  font-weight: 500;
+  color: #4b5563;
+  text-align: center !important;
+  transform: translateX(-50%);
+  left: 50% !important;
+}
+
+/* kolumny dni */
+
+.vis-grid.vis-odd {
+  background: #f9fafb;
+}
+
+.vis-grid.vis-even {
+  background: #ffffff;
+}
+
+.vis-grid {
+  border-color: #e5e7eb;
+  opacity: 0.6;
+}
+
+/* grupy (wiersze) – trochę wyższe */
+
+.vis-labelset .vis-label {
+  border-color: transparent;
+}
+
+.vis-labelset .vis-label:nth-child(odd) {
+  background: #ffffff;
+}
+
+.vis-labelset .vis-label:nth-child(even) {
+  background: #f9fafb;
+}
+
+.vis-label .vis-inner {
+  font-size: 0.76rem;
+  color: #4b5563;
+}
+
+.vis-label,
+.vis-group {
+  min-height: 40px;
+}
+
+/* === Itemy (paski zadań) === */
+
+.vis-item {
+  cursor: grab;
+}
+.vis-item.vis-selected {
+  cursor: grabbing;
+}
+
+.vis-item.vis-selected,
+.vis-item.is-selected {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.9);
+}
+
+/* tła (background) nie blokują kliknięć w taski */
+.vis-item.vis-background {
+  pointer-events: none;
+}
+
+.tl-item {
+  padding: 0;
+}
+
+.tl-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-vis-item.vis-item {
+  position: relative;
+  border-radius: 999px; /* zaokrąglone rogi */
+  border-width: 1px;
+  padding: 0;
+  min-height: 34px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+  overflow: hidden;
+}
+
+/* żeby zawartość trzymała border-radius */
+.tl-vis-item.vis-item .vis-item-content {
+  padding: 4px 10px;
+  border-radius: inherit;
+}
+
+/* === Kolory / gradient: status -> priorytet === */
+
+/* bazowe kolory statusów + priorytetów */
+:root {
+  --st-todo: #e5e7eb;
+  --st-in-progress: #dbeafe;
+  --st-done: #dcfce7;
+
+  --prio-low: #ecfccb;
+  --prio-medium: #dbeafe;
+  --prio-high: #fee2e2;
+}
+
+/* todo */
+
+.tl-vis-item.st-todo.prio-low {
+  border-color: #a3e635;
+  background: linear-gradient(90deg, var(--st-todo) 0%, var(--prio-low) 100%);
+}
+
+.tl-vis-item.st-todo.prio-medium {
+  border-color: #60a5fa;
+  background: linear-gradient(
+    90deg,
+    var(--st-todo) 0%,
+    var(--prio-medium) 100%
+  );
+}
+
+.tl-vis-item.st-todo.prio-high {
+  border-color: #f97373;
+  background: linear-gradient(90deg, var(--st-todo) 0%, var(--prio-high) 100%);
+}
+
+/* in progress (klasa st-in_progress) */
+
+.tl-vis-item.st-in_progress.prio-low {
+  border-color: #a3e635;
+  background: linear-gradient(
+    90deg,
+    var(--st-in-progress) 0%,
+    var(--prio-low) 100%
+  );
+}
+
+.tl-vis-item.st-in_progress.prio-medium {
+  border-color: #60a5fa;
+  background: linear-gradient(
+    90deg,
+    var(--st-in-progress) 0%,
+    var(--prio-medium) 100%
+  );
+}
+
+.tl-vis-item.st-in_progress.prio-high {
+  border-color: #f97373;
+  background: linear-gradient(
+    90deg,
+    var(--st-in-progress) 0%,
+    var(--prio-high) 100%
+  );
+}
+
+/* done */
+
+.tl-vis-item.st-done.prio-low {
+  border-color: #22c55e;
+  background: linear-gradient(90deg, var(--st-done) 0%, var(--prio-low) 100%);
+}
+
+.tl-vis-item.st-done.prio-medium {
+  border-color: #60a5fa;
+  background: linear-gradient(
+    90deg,
+    var(--st-done) 0%,
+    var(--prio-medium) 100%
+  );
+}
+
+.tl-vis-item.st-done.prio-high {
+  border-color: #f97373;
+  background: linear-gradient(90deg, var(--st-done) 0%, var(--prio-high) 100%);
+}
+
+/* fallback, gdy status nieznany – sam kolor priorytetu */
+
+.tl-vis-item.prio-low:not(.st-todo):not(.st-in_progress):not(.st-done) {
+  border-color: #a3e635;
+  background: var(--prio-low);
+}
+
+.tl-vis-item.prio-medium:not(.st-todo):not(.st-in_progress):not(.st-done) {
+  border-color: #60a5fa;
+  background: var(--prio-medium);
+}
+
+.tl-vis-item.prio-high:not(.st-todo):not(.st-in_progress):not(.st-done) {
+  border-color: #f97373;
+  background: var(--prio-high);
+}
+
+/* === Highlight nowo utworzonego taska === */
+
+.tl-vis-item.is-new::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #bbf7d0;
+  pointer-events: none;
+  animation: new-task-fade 20s linear forwards;
+  mix-blend-mode: multiply;
+}
+
+@keyframes new-task-fade {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* === Tła zakresów (projekt / wszystkie taski) === */
+
+.tl-bg-project.vis-item.vis-background {
+  background: rgba(59, 130, 246, 0.08);
+  border-top: 1px dashed rgba(37, 99, 235, 0.4);
+  border-bottom: 1px dashed rgba(37, 99, 235, 0.4);
+}
+
+.tl-bg-tasks.vis-item.vis-background {
+  background: rgba(16, 185, 129, 0.08);
+  border-top: 1px dashed rgba(5, 150, 105, 0.4);
+  border-bottom: 1px dashed rgba(5, 150, 105, 0.4);
+}
+
+/* === Sidebar (Unscheduled) === */
+
+.tls-side {
+  width: 280px;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border-left: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+
+.tls-side-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.tls-side-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tls-side-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.tls-side-subtitle {
+  font-size: 0.74rem;
+  color: #6b7280;
+}
+
+.count-pill {
+  min-width: 1.6rem;
+  text-align: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+/* uchwyt do rozwijania panelu */
+
+.tls-side-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #4b5563;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 2000;
+  transition: all 0.15s ease;
+}
+
+.tls-side-toggle:hover {
+  background: #f8fafc;
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* lista unscheduled */
+
+.tls-list {
+  flex: 1;
+  margin-top: 0.3rem;
+  padding-right: 0.2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tls-uns-item {
+  border-radius: 10px;
+  padding: 0.5rem 0.55rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tls-uns-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tls-uns-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tls-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.tls-description {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+/* Pillki */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  border: 1px solid transparent;
+}
+
+/* priorytet jako pill */
+
+.pill-prio.prio-low {
+  background: #ecfccb;
+  border-color: #a3e635;
+  color: #3f6212;
+}
+
+.pill-prio.prio-medium {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
+.pill-prio.prio-high {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #7f1d1d;
+}
+
+/* status jako pill */
+
+.pill-status {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
+.pill-status.st-done {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+.pill-status.st-in_progress {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.pill-status.st-todo {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+/* Empty state */
+
+.tls-empty {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.tls-main-wrapper.is-today-flash {
+  animation: today-flash 1.1s ease-out;
+}
+
+@keyframes today-flash {
+  0% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.tls-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.4rem;
+}
+
+.tls-filter-label {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.tls-chips {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.tls-chip {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.tls-chip.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #f9fafb;
+}
+
+/* prostokąt zakresu przy tworzeniu nowego taska */
+
+.drag-rect {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(37, 99, 235, 0.4);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 500;
+  display: none;
+}
+
+/* === Hover-card przy najechaniu na task === */
+
+.hover-card {
+  position: fixed;
+  transform: translate(-50%, -115%);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  width: 260px;
+  max-width: 70vw;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  z-index: 2000;
+  pointer-events: auto;
+  font-size: 0.78rem;
+}
+
+.hover-card strong {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #111827;
+}
+
+.hover-card p {
+  color: #4b5563;
+  font-size: 0.74rem;
+  margin: 0 0 0.4rem;
+}
+
+.hover-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.hover-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.hover-prio.prio-low {
+  border-color: #a3e635;
+  background: #ecfccb;
+  color: #365314;
+}
+
+.hover-prio.prio-medium {
+  border-color: #60a5fa;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.hover-prio.prio-high {
+  border-color: #f87171;
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.hover-status {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #4b5563;
+}
+
+.hover-dates {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.hover-btn {
+  margin-top: 0.3rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.hover-btn:hover {
+  background: #1d4ed8;
+}

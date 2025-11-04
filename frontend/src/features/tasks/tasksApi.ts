@@ -10,6 +10,8 @@ export type TasksListParams = {
   status?: "todo" | "doing" | "done";
   ordering?: "-created_at" | "created_at" | "due_date" | "-due_date" | "priority" | "-priority";
   page?: number;
+  search?: string;
+  priority?: "1" | "2" | "3";
 };
 
 export const tasksApi = createApi({
