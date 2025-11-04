@@ -13,6 +13,7 @@ import ProjectTasksTab from "./features/projects/tabs/ProjectTasksTab";
 import ProjectKanbanTab from "./features/projects/tabs/ProjectKanbanTab";
 import ProjectTimelineTab from "./features/projects/tabs/ProjectTimelineTab";
 import ProjectMilestonesTab from "./features/projects/tabs/ProjectMilestonesTab";
+import "vis-timeline/styles/vis-timeline-graph2d.css";
 
 export default function App() {
   return (

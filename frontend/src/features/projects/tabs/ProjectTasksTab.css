@@ -1,0 +1,409 @@
+/* === OVERVIEW / KPI === */
+
+.tsk-overview {
+  margin-bottom: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.tsk-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.tsk-kpi-card-wrapper {
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.tsk-kpi-card-wrapper.is-clickable {
+  cursor: pointer;
+}
+
+.tsk-kpi-card-wrapper.is-clickable .tsk-kpi-card {
+  transition: transform 0.08s ease, box-shadow 0.08s ease,
+    border-color 0.08s ease, background-color 0.08s ease;
+}
+
+.tsk-kpi-card-wrapper.is-clickable:hover .tsk-kpi-card {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.tsk-kpi-card-wrapper.is-active .tsk-kpi-card {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.tsk-kpi-card {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.tsk-kpi-card--highlight {
+  border-color: #f97316;
+}
+
+.tsk-kpi-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.tsk-kpi-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.tsk-kpi-subtitle {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Add task card */
+
+.tsk-add-card .tsk-kpi-card {
+  background: #eff6ff; /* jasnoniebieskie */
+  border-color: #bfdbfe;
+}
+
+.tsk-kpi-card--add .tsk-kpi-add-value {
+  font-size: 20px;
+}
+
+/* === CHARTS + INSIGHTS === */
+
+.tsk-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.tsk-chart-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 4px 0;
+}
+
+.tsk-chart-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.tsk-chart-empty {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* stała wysokość dla kontenera wykresu */
+
+.tsk-chart-inner {
+  height: 220px;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+/* opisy POD wykresem */
+
+.tsk-chart-summary {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.tsk-chart-selected {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #475569;
+  text-align: center;
+}
+
+/* Insights */
+
+.tsk-insights-block {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tsk-insights-title {
+  font-weight: 600;
+}
+
+.tsk-insights-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* === FILTRY === */
+
+.tsk-filters {
+  margin-bottom: 16px;
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tsk-search-input {
+  flex: 0 0 220px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 13px;
+}
+
+.tsk-filters-middle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tsk-filters-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Status & priority chips */
+
+.tsk-status-filter,
+.tsk-priority-filter {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tsk-status-label,
+.tsk-priority-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* chipy */
+
+.tsk-chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.tsk-chip.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.tsk-select {
+  min-width: 150px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 13px;
+  background: #ffffff;
+}
+
+.tsk-sort-dir-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* === LISTA / GRID KAFELKÓW === */
+
+.tsk-list-wrapper {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* Skeleton cards */
+
+.tsk-skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tsk-skeleton-line {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.tsk-skeleton-line-short {
+  width: 40%;
+  height: 14px;
+}
+
+.tsk-skeleton-line-medium {
+  width: 80%;
+}
+
+.tsk-skeleton-line-long {
+  width: 60%;
+}
+
+/* Empty state */
+
+.tsk-empty-state {
+  text-align: center;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.tsk-empty-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.tsk-empty-text {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.tsk-empty-subtext {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.tsk-empty-btn {
+  margin-top: 12px;
+}
+
+/* Grupowanie */
+
+.tsk-group {
+  display: grid;
+  gap: 6px;
+}
+
+.tsk-group-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tsk-group-count {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* === Task card === */
+
+.tsk-item-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tsk-item-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+}
+
+.tsk-item-main {
+  flex: 1;
+}
+
+.tsk-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tsk-item-title {
+  font-weight: 600;
+}
+
+.tsk-item-description {
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.tsk-item-meta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* Badges */
+
+.tsk-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.tsk-badge-priority {
+  background: #e0f2fe;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tsk-badge-priority--high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tsk-badge-overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tsk-badge-today {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+/* Open button – pełna szerokość pod treścią */
+
+.tsk-item-open-btn {
+  margin-top: 8px;
+  width: 100%;
+  text-align: center;
+  border-radius: 999px;
+}
