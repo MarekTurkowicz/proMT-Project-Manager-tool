@@ -1,450 +1,1130 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Timeline } from "vis-timeline/standalone";
+import { DataSet } from "vis-data";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "../../../app/store";
 import { useProject } from "../context/ProjectContext";
-import { useListTasksQuery } from "../../tasks/tasksApi";
-import type { Task } from "../../tasks/types";
+import {
+  useListTasksQuery,
+  useUpdateTaskMutation,
+  useCreateTaskMutation,
+  tasksApi,
+} from "../../tasks/tasksApi";
+import type { Task, CreateTaskPayload } from "../../tasks/types";
+import EditTaskModal from "../../tasks/components/EditTaskModal";
+import AddTaskModal from "../../tasks/components/AddTaskModal";
 
-/**
- * ProjectTimelineTab
- * ------------------------------------------------------
- * Wykres osi czasu (quasi-Gantt) dla zadań w danym projekcie
- * na bazie istniejącego store/API (useListTasksQuery + ProjectContext).
- *
- * Założenia:
- *  - Task posiada daty: start_date i end_date (snake_case) albo startDate / endDate.
- *    Jeżeli brak startu -> używamy endu/due_date. Jeżeli brak endu -> traktujemy jako 1-dniowy milestone.
- *  - Kolor paska zależy od statusu i priorytetu.
- *  - Proste filtry: szukaj, status (todo/doing/done), priorytet.
- *  - Zoom (piksele na dzień) i przewijanie poziome.
- *  - "Today" marker, oś miesięczna, link do karty zadania w /tasks?focus={id}.
- *
- * Nie dodaję nowych zależności – czysty React + CSS wstrzyknięty lokalnie.
- */
+import type {
+  DataItem,
+  TimelineOptions,
+  DateType,
+  IdType,
+  TimelineItem,
+  TimelineItemType,
+} from "vis-timeline";
 
-// ====== Typy pomocnicze ======
+import "vis-timeline/styles/vis-timeline-graph2d.css";
+import "./ProjectTimelineTab.css";
 
-type ColKey = "todo" | "doing" | "done"; // zgodne z kanbanem
+/* ===== Typy ===== */
 
-type Priority = 1 | 2 | 3;
-
-type NormalizedTask = Task & {
-  _start: Date | null;
-  _end: Date | null;
-  _hasRange: boolean; // czy mamy przedział (start-end) czy punkt
+type FixedVisItem = TimelineItem & {
+  id: IdType;
+  type?: TimelineItemType;
+  start?: DateType;
+  end?: DateType;
 };
 
-// ====== Narzędzia dat ======
+type TaskStatus = Task["status"];
 
-function parseMaybeDate(val?: string | null): Date | null {
-  if (!val) return null;
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
+type TimelineSelectEvent = {
+  items: IdType[];
+};
+
+type TimelinePointerEvent = {
+  clientX?: number;
+  clientY?: number;
+  pageX?: number;
+  pageY?: number;
+};
+
+type TimelineClickEvent = {
+  item?: IdType | null;
+  event?: TimelinePointerEvent;
+};
+
+type TimelineClickWithTime = {
+  item?: IdType | null;
+  event?: TimelinePointerEvent;
+  time?: DateType;
+  what?: "background" | "item" | "axis" | string;
+};
+
+type ItemOverEvent = {
+  item?: IdType | null;
+  event?: TimelinePointerEvent;
+};
+
+type PriorityLabel = "Low" | "Medium" | "High";
+
+/* ===== Utils ===== */
+
+function escapeHtml(s: string) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
-function clampDate(d: Date, min: Date, max: Date): Date {
-  if (d < min) return min;
-  if (d > max) return max;
-  return d;
+function itemHtml(t: Task) {
+  const title = escapeHtml(t.title ?? "");
+  let desc =
+    t.description && t.description.trim()
+      ? escapeHtml(t.description.trim())
+      : "";
+  if (desc.length > 50) desc = desc.slice(0, 50) + "…";
+  const label = desc ? `${title} — ${desc}` : title;
+  return `<div class="tl-item"><div class="tl-label">${label}</div></div>`;
 }
 
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+function statusClass(status: TaskStatus) {
+  if (!status) return "";
+  return `st-${status}`;
 }
 
-function endOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+function startOfDay(d: Date) {
+  const n = new Date(d);
+  n.setHours(0, 0, 0, 0);
+  return n;
 }
 
-function daysBetween(a: Date, b: Date) {
-  const ms = b.getTime() - a.getTime();
-  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+function endOfDay(d: Date) {
+  const n = new Date(d);
+  n.setHours(23, 59, 59, 999);
+  return n;
 }
 
-// ====== Komponent ======
+function toDate(dt: DateType | undefined): Date {
+  if (dt instanceof Date) return dt;
+  if (typeof dt === "number") return new Date(dt);
+  if (typeof dt === "string") return new Date(dt);
+  return new Date();
+}
+
+function toDateOrNull(dt: DateType | undefined): Date | null {
+  if (!dt) return null;
+  if (dt instanceof Date) return dt;
+  if (typeof dt === "number") return new Date(dt);
+  if (typeof dt === "string") return new Date(dt);
+  return null;
+}
+
+/** Parsowanie 'YYYY-MM-DD' bez niespodzianek strefowych */
+function parseDateOnly(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map((x) => Number(x));
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Mapowanie liczbowego priorytetu na label UI */
+function getPriorityLabel(p?: number | null): PriorityLabel {
+  if (p === 3) return "High";
+  if (p === 2) return "Medium";
+  return "Low";
+}
+
+/** Klasa CSS z liczbowego priorytetu */
+function priorityClassFromNumber(p?: number | null): string {
+  const label = getPriorityLabel(p);
+  return `prio-${label.toLowerCase()}`;
+}
+
+/* ===== Komponent ===== */
 
 export default function ProjectTimelineTab() {
   const project = useProject();
+  const dispatch = useDispatch<AppDispatch>();
 
-  const { data, isLoading, isFetching } = useListTasksQuery(
-    useMemo(
-      () => ({ project: project.id, ordering: "-priority" as const }),
-      [project.id]
-    )
+  // 👇 ZMIANA: bez ordering, żeby API zwracało WSZYSTKIE taski z projektu (w tym bez dat)
+  const queryArg = useMemo(() => ({ project: project.id }), [project.id]);
+
+  const { data, isFetching } = useListTasksQuery(queryArg);
+  const tasks: Task[] = useMemo(() => data?.results ?? [], [data]);
+
+  const [updateTask] = useUpdateTaskMutation();
+  const [createTask] = useCreateTaskMutation();
+
+  // aktualna lista zadań w ref (do double click / hover)
+  const tasksRef = useRef<Task[]>(tasks);
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const timelineRef = useRef<Timeline | null>(null);
+  const itemsDSRef = useRef(new DataSet<DataItem>());
+  const groupsDSRef = useRef(new DataSet<{ id: IdType; content: string }>());
+  const dragRectRef = useRef<HTMLDivElement | null>(null);
+
+  const [selectedId, setSelectedId] = useState<IdType | null>(null);
+  const [editing, setEditing] = useState<Task | null>(null);
+
+  const [creating, setCreating] = useState<{
+    open: boolean;
+    startISO?: string;
+    endISO?: string;
+  }>({ open: false });
+
+  const [snapToDay, setSnapToDay] = useState(true);
+  const snapRef = useRef(snapToDay);
+  useEffect(() => {
+    snapRef.current = snapToDay;
+  }, [snapToDay]);
+
+  const [sideOpen, setSideOpen] = useState(false);
+
+  // today flash
+  const [todayFlash, setTodayFlash] = useState(false);
+
+  // filtr po nazwie
+  const [filterText, setFilterText] = useState("");
+  const normalizedFilter = useMemo(
+    () => filterText.trim().toLowerCase(),
+    [filterText]
   );
 
-  const rawTasks = useMemo(() => data?.results ?? [], [data]);
+  // filtry status / priorytet
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityLabel | "all">(
+    "all"
+  );
 
-  // Local UI state
-  const [search, setSearch] = useState("");
-  const [statusSet, setStatusSet] = useState<ColKey[]>([]); // pusty = wszystkie
-  const [prioSet, setPrioSet] = useState<Priority[]>([]);
-  const [pxPerDay, setPxPerDay] = useState(18); // zoom (px/dzień)
+  // tryb dodawania taska klikami na osi
+  const [addingOnTimeline, setAddingOnTimeline] = useState(false);
+  const addingOnTimelineRef = useRef(addingOnTimeline);
+  useEffect(() => {
+    addingOnTimelineRef.current = addingOnTimeline;
+  }, [addingOnTimeline]);
+  const addStartRef = useRef<Date | null>(null);
 
-  // Normalizacja dat i filtrowanie
-  const tasks: NormalizedTask[] = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const hasStatus = statusSet.length > 0;
-    const hasPrio = prioSet.length > 0;
+  // id świeżo utworzonego taska (zielony highlight)
+  const [newTaskId, setNewTaskId] = useState<number | null>(null);
 
-    return rawTasks
-      .map((t) => {
-        // obsługa różnych nazw pól
-        const sd = (t as any).start_date ?? (t as any).startDate ?? null;
-        const ed =
-          (t as any).end_date ??
-          (t as any).endDate ??
-          (t as any).due_date ??
-          null;
-        const start = parseMaybeDate(sd);
-        const end = parseMaybeDate(ed);
+  // hover-card state
+  const [hoverTask, setHoverTask] = useState<Task | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const hoverLockedRef = useRef(false);
+  const hoverHideTimeoutRef = useRef<number | null>(null);
 
-        let _start: Date | null = start ?? end ?? null; // fallback do end
-        let _end: Date | null = end ?? start ?? null; // fallback do start
+  // unikalne statusy (do przycisków filtrów)
+  const statusOptions = useMemo(() => {
+    const set = new Set<TaskStatus>();
+    tasks.forEach((t) => {
+      if (t.status) set.add(t.status);
+    });
+    return Array.from(set);
+  }, [tasks]);
 
-        // jeśli tylko 1 data -> milestone (1 dzień)
-        let _hasRange = !!(start && end);
-        if (!_hasRange && _start) {
-          _end = new Date(_start);
+  // priorytety – pełna lista labeli
+  const priorityOptions: PriorityLabel[] = useMemo(
+    () => ["Low", "Medium", "High"],
+    []
+  );
+
+  // podział na scheduled / unscheduled (ma obie daty czy nie)
+  const { scheduled, unscheduled } = useMemo(() => {
+    const sched: Task[] = [];
+    const uns: Task[] = [];
+    for (const t of tasks) {
+      if (t.start_date && t.due_date) sched.push(t);
+      else uns.push(t);
+    }
+    return { scheduled: sched, unscheduled: uns };
+  }, [tasks]);
+
+  // filtrujemy po tytule + status + priorytet
+  const { filteredScheduled, filteredUnscheduled } = useMemo(() => {
+    const match = (t: Task) => {
+      const nameMatch = (t.title ?? "")
+        .toLowerCase()
+        .includes(normalizedFilter);
+      const statusMatch = statusFilter === "all" || t.status === statusFilter;
+
+      const prioLabel = getPriorityLabel(t.priority);
+      const prioMatch =
+        priorityFilter === "all" || prioLabel === priorityFilter;
+
+      return nameMatch && statusMatch && prioMatch;
+    };
+
+    return {
+      filteredScheduled: scheduled.filter(match),
+      filteredUnscheduled: unscheduled.filter(match),
+    };
+  }, [scheduled, unscheduled, normalizedFilter, statusFilter, priorityFilter]);
+
+  /* ===== Items i Groups – na osi pokazujemy TYLKO scheduled ===== */
+
+  const taskItems: DataItem[] = useMemo(() => {
+    return filteredScheduled.map((t) => {
+      const start = parseDateOnly(t.start_date!);
+      const rawEnd = parseDateOnly(t.due_date!);
+      const sameDay = start.toDateString() === rawEnd.toDateString();
+      const end = sameDay ? endOfDay(start) : rawEnd;
+
+      const prioLabel = getPriorityLabel(t.priority);
+      const isNew = typeof newTaskId === "number" && t.id === newTaskId;
+
+      return {
+        id: t.id,
+        group: t.id,
+        start,
+        end,
+        type: "range",
+        content: itemHtml(t),
+        className: [
+          "tl-vis-item",
+          priorityClassFromNumber(t.priority),
+          statusClass(t.status),
+          selectedId === t.id ? "is-selected" : "",
+          isNew ? "is-new" : "",
+          `prio-label-${prioLabel.toLowerCase()}`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      };
+    });
+  }, [filteredScheduled, selectedId, newTaskId]);
+
+  const groups = useMemo(
+    () =>
+      filteredScheduled.map((t) => ({
+        id: t.id as IdType,
+        content: t.title || `Task #${t.id}`,
+      })),
+    [filteredScheduled]
+  );
+
+  const projectRangeItem: DataItem | null = useMemo(() => {
+    if (!project.start_date || !project.end_date) return null;
+    return {
+      id: "project-range",
+      type: "background",
+      start: parseDateOnly(project.start_date),
+      end: parseDateOnly(project.end_date),
+      className: "tl-bg-project",
+      content: "",
+    };
+  }, [project.start_date, project.end_date]);
+
+  const tasksRangeItem: DataItem | null = useMemo(() => {
+    if (!scheduled.length) return null;
+    const starts = scheduled.map((t) => parseDateOnly(t.start_date!));
+    const ends = scheduled.map((t) => parseDateOnly(t.due_date!));
+    const minStart = new Date(Math.min(...starts.map((d) => d.getTime())));
+    const maxEnd = new Date(Math.max(...ends.map((d) => d.getTime())));
+    return {
+      id: "tasks-range",
+      type: "background",
+      start: startOfDay(minStart),
+      end: endOfDay(maxEnd),
+      className: "tl-bg-tasks",
+      content: "",
+    };
+  }, [scheduled]);
+
+  const allItems: DataItem[] = useMemo(() => {
+    const list = [...taskItems];
+    if (projectRangeItem) list.push(projectRangeItem);
+    if (tasksRangeItem) list.push(tasksRangeItem);
+    return list;
+  }, [taskItems, projectRangeItem, tasksRangeItem]);
+
+  /* ===== Tooltip (do zakresu) ===== */
+
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  function showRangeTooltip(start: Date, end: Date) {
+    const el = tooltipRef.current;
+    if (!el) return;
+    const fmt = (d: Date) =>
+      d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+    el.textContent = `${fmt(start)} → ${fmt(end)}`;
+    el.style.whiteSpace = "nowrap";
+    el.style.opacity = "1";
+  }
+
+  function hideTooltip() {
+    const el = tooltipRef.current;
+    if (el) el.style.opacity = "0";
+  }
+
+  /* ===== Timeline Init ===== */
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const itemsDS = itemsDSRef.current;
+    const groupsDS = groupsDSRef.current;
+
+    if (!timelineRef.current) {
+      const options: TimelineOptions = {
+        orientation: "top",
+        stack: true,
+        height: "100%",
+        horizontalScroll: true,
+        zoomKey: "ctrlKey",
+        selectable: true,
+        multiselect: false,
+        groupHeightMode: "auto",
+        margin: { item: 6, axis: 12 },
+        editable: {
+          add: false,
+          updateTime: true,
+          updateGroup: false,
+          remove: false,
+        },
+        timeAxis: { scale: "day", step: 1 },
+        zoomMin: 1000 * 60 * 60 * 24,
+        zoomMax: 1000 * 60 * 60 * 24 * 365 * 3,
+
+        onMove: (
+          rawItem: TimelineItem,
+          cb: (item: TimelineItem | null) => void
+        ) => {
+          const item = rawItem as FixedVisItem;
+          if (typeof item.id !== "number") return cb(null);
+
+          const useSnap = snapRef.current;
+          const start = useSnap
+            ? startOfDay(toDate(item.start))
+            : toDate(item.start);
+          const end = useSnap ? endOfDay(toDate(item.end)) : toDate(item.end);
+          showRangeTooltip(start, end);
+
+          const id = item.id;
+          const patch: Partial<CreateTaskPayload> = {
+            start_date: start.toISOString().slice(0, 10),
+            due_date: end.toISOString().slice(0, 10),
+          };
+
+          const patchCache = dispatch(
+            tasksApi.util.updateQueryData("listTasks", queryArg, (draft) => {
+              const arr = draft?.results ?? [];
+              const i = arr.findIndex((t) => t.id === id);
+              if (i !== -1) arr[i] = { ...arr[i], ...patch };
+            })
+          );
+
+          updateTask({ id, patch })
+            .unwrap()
+            .then(() => cb({ ...item, start, end, type: "range" }))
+            .catch(() => {
+              patchCache.undo();
+              cb(null);
+            });
+        },
+
+        onUpdate: (
+          rawItem: TimelineItem,
+          cb: (item: TimelineItem | null) => void
+        ) => {
+          const item = rawItem as FixedVisItem;
+          if (typeof item.id !== "number") return cb(null);
+
+          const useSnap = snapRef.current;
+          const start = useSnap
+            ? startOfDay(toDate(item.start))
+            : toDate(item.start);
+          const end = useSnap ? endOfDay(toDate(item.end)) : toDate(item.end);
+          showRangeTooltip(start, end);
+
+          const id = item.id;
+          const patch: Partial<CreateTaskPayload> = {
+            start_date: start.toISOString().slice(0, 10),
+            due_date: end.toISOString().slice(0, 10),
+          };
+
+          const patchCache = dispatch(
+            tasksApi.util.updateQueryData("listTasks", queryArg, (draft) => {
+              const arr = draft?.results ?? [];
+              const i = arr.findIndex((t) => t.id === id);
+              if (i !== -1) arr[i] = { ...arr[i], ...patch };
+            })
+          );
+
+          updateTask({ id, patch })
+            .unwrap()
+            .then(() => cb({ ...item, start, end, type: "range" }))
+            .catch(() => {
+              patchCache.undo();
+              cb(null);
+            });
+        },
+      };
+
+      const tl = new Timeline(container, itemsDS, groupsDS, options);
+      timelineRef.current = tl;
+
+      // prostokąt pod nowy zakres dla trybu Add task on timeline
+      const rect = document.createElement("div");
+      rect.className = "drag-rect";
+      container.appendChild(rect);
+      dragRectRef.current = rect;
+      let pendingRectStartX: number | null = null;
+
+      // Zaznaczanie tasków
+      tl.on("select", (props: TimelineSelectEvent) => {
+        setSelectedId(props.items[0] ?? null);
+      });
+
+      // Double click -> EditTaskModal
+      tl.on("doubleClick", (props: TimelineClickEvent) => {
+        const id = props.item;
+        if (typeof id !== "number") return;
+        const task = tasksRef.current.find((t) => t.id === id);
+        if (task) setEditing(task);
+      });
+
+      // Hover -> hover-card z danymi taska
+      tl.on("itemover", (props: ItemOverEvent) => {
+        const { item, event } = props;
+        if (typeof item !== "number") return;
+        const task = tasksRef.current.find((t) => t.id === item);
+        if (!task) return;
+
+        const clientX = event?.clientX ?? event?.pageX ?? 0;
+        const clientY = event?.clientY ?? event?.pageY ?? 0;
+
+        if (hoverHideTimeoutRef.current !== null) {
+          window.clearTimeout(hoverHideTimeoutRef.current);
+          hoverHideTimeoutRef.current = null;
         }
 
-        return { ...(t as any), _start, _end, _hasRange } as NormalizedTask;
-      })
-      .filter((t) => !!t._start && !!t._end) // tylko te, które mają cokolwiek do narysowania
-      .filter((t) => (q ? (t.title || "").toLowerCase().includes(q) : true))
-      .filter((t) =>
-        hasStatus
-          ? (statusSet as string[]).includes((t.status as string) ?? "todo")
-          : true
-      )
-      .filter((t) =>
-        hasPrio
-          ? (prioSet as number[]).includes(t.priority as number as Priority)
-          : true
+        setHoverPos({ x: clientX, y: clientY });
+        setHoverTask(task);
+      });
+
+      tl.on("itemout", () => {
+        if (hoverLockedRef.current) {
+          return;
+        }
+        if (hoverHideTimeoutRef.current !== null) {
+          window.clearTimeout(hoverHideTimeoutRef.current);
+        }
+        hoverHideTimeoutRef.current = window.setTimeout(() => {
+          if (!hoverLockedRef.current) {
+            setHoverTask(null);
+            setHoverPos(null);
+          }
+        }, 100);
+      });
+
+      // Ukrycie tooltipa po puszczeniu myszki
+      tl.on("mouseUp", () => {
+        hideTooltip();
+      });
+
+      // ===== Tryb dodawania taska klikami na osi =====
+
+      tl.on("mouseMove", (props: TimelineClickWithTime) => {
+        if (!addingOnTimelineRef.current) return;
+        if (!addStartRef.current) return;
+
+        const rectEl = dragRectRef.current;
+        if (!rectEl) return;
+
+        const { event, time } = props;
+        const containerRect = container.getBoundingClientRect();
+        const clientX = event?.clientX ?? event?.pageX;
+        if (clientX == null) return;
+
+        const currentX = clientX - containerRect.left;
+
+        if (pendingRectStartX === null) {
+          return;
+        }
+
+        const leftPx = Math.min(pendingRectStartX, currentX);
+        const widthPx = Math.abs(currentX - pendingRectStartX);
+
+        rectEl.style.display = "block";
+        rectEl.style.left = `${leftPx}px`;
+        rectEl.style.width = `${widthPx}px`;
+
+        const endDateRaw = toDateOrNull(time);
+        if (endDateRaw) {
+          const startRef = addStartRef.current;
+          if (!startRef) return;
+          const start =
+            startRef.getTime() <= endDateRaw.getTime() ? startRef : endDateRaw;
+          const end =
+            startRef.getTime() <= endDateRaw.getTime() ? endDateRaw : startRef;
+
+          const useSnap = snapRef.current;
+          const s = useSnap ? startOfDay(start) : start;
+          const e = useSnap ? endOfDay(end) : end;
+
+          showRangeTooltip(s, e);
+        }
+      });
+
+      tl.on("click", (props: TimelineClickWithTime) => {
+        if (!addingOnTimelineRef.current) return;
+
+        const { time, what, event } = props;
+
+        const rectEl = dragRectRef.current;
+
+        // klik w istniejący item w trybie dodawania = anuluj zaznaczenie
+        if (what === "item") {
+          addStartRef.current = null;
+          pendingRectStartX = null;
+          if (rectEl) {
+            rectEl.style.display = "none";
+          }
+          hideTooltip();
+          return;
+        }
+
+        const clickDateRaw = toDateOrNull(time);
+        if (!clickDateRaw) return;
+
+        const useSnap = snapRef.current;
+        const normalized = useSnap ? startOfDay(clickDateRaw) : clickDateRaw;
+
+        const containerRect = container.getBoundingClientRect();
+        const clientX = event?.clientX ?? event?.pageX;
+        const clickX = clientX != null ? clientX - containerRect.left : null;
+
+        // pierwszy klik → ustawiamy start
+        if (!addStartRef.current) {
+          addStartRef.current = normalized;
+          pendingRectStartX = clickX ?? null;
+
+          if (rectEl && clickX != null) {
+            rectEl.style.display = "block";
+            rectEl.style.left = `${clickX}px`;
+            rectEl.style.width = "0px";
+            rectEl.style.top = "0";
+            rectEl.style.bottom = "0";
+          }
+
+          showRangeTooltip(normalized, normalized);
+          return;
+        }
+
+        // drugi klik → mamy start + end
+        const first = addStartRef.current;
+        const startTime =
+          first.getTime() <= normalized.getTime() ? first : normalized;
+        const endRaw =
+          first.getTime() <= normalized.getTime() ? normalized : first;
+
+        const endTime = useSnap ? endOfDay(endRaw) : endRaw;
+
+        addStartRef.current = null;
+        pendingRectStartX = null;
+        hideTooltip();
+        if (rectEl) {
+          rectEl.style.display = "none";
+        }
+
+        const startISO = startTime.toISOString().slice(0, 10);
+        const endISO = endTime.toISOString().slice(0, 10);
+
+        setAddingOnTimeline(false); // wychodzimy z trybu
+        setCreating({
+          open: true,
+          startISO,
+          endISO,
+        });
+      });
+    }
+
+    // ===== Aktualizacja datasetów =====
+    itemsDS.clear();
+    itemsDS.add(allItems);
+
+    groupsDS.clear();
+    groupsDS.add(groups);
+
+    // ===== Fit widoku =====
+    const tl = timelineRef.current!;
+    const hasTasks = taskItems.length > 0;
+    if (project.start_date && project.end_date) {
+      const s = parseDateOnly(project.start_date);
+      const e = parseDateOnly(project.end_date);
+      const padMs = (e.getTime() - s.getTime()) * 0.05;
+      tl.setWindow(
+        new Date(s.getTime() - padMs),
+        new Date(e.getTime() + padMs),
+        {
+          animation: false,
+        }
       );
-  }, [rawTasks, search, statusSet, prioSet]);
-
-  // Zakres osi czasu – minimalny start i maksymalny end po filtrowaniu
-  const [minDate, maxDate] = useMemo(() => {
-    if (tasks.length === 0) {
-      const today = new Date();
-      const min = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const max = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      return [min, max] as const;
+    } else if (hasTasks) {
+      tl.fit({ animation: false });
+    } else {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      tl.setWindow(start, end, { animation: false });
     }
-    let min = tasks[0]._start!;
-    let max = tasks[0]._end!;
-    for (const t of tasks) {
-      if (t._start! < min) min = t._start!;
-      if (t._end! > max) max = t._end!;
+  }, [
+    allItems,
+    groups,
+    taskItems.length,
+    project.start_date,
+    project.end_date,
+    dispatch,
+    queryArg,
+    updateTask,
+  ]);
+
+  /* ===== Akcje pomocnicze ===== */
+
+  function zoom(factor: number) {
+    const tl = timelineRef.current;
+    if (!tl) return;
+    const range = tl.getWindow();
+    const interval = range.end.getTime() - range.start.getTime();
+    const delta = interval * factor;
+    tl.setWindow(
+      new Date(range.start.getTime() - delta),
+      new Date(range.end.getTime() + delta),
+      { animation: false }
+    );
+  }
+
+  function today() {
+    const tl = timelineRef.current;
+    if (!tl) return;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    tl.setWindow(start, end, { animation: false });
+
+    setTodayFlash(true);
+    window.setTimeout(() => setTodayFlash(false), 1200);
+  }
+
+  function fitProject() {
+    const tl = timelineRef.current;
+    if (!tl) return;
+    if (project.start_date && project.end_date) {
+      const s = parseDateOnly(project.start_date);
+      const e = parseDateOnly(project.end_date);
+      const padMs = (e.getTime() - s.getTime()) * 0.05;
+      tl.setWindow(
+        new Date(s.getTime() - padMs),
+        new Date(e.getTime() + padMs),
+        { animation: false }
+      );
+    } else {
+      tl.fit({ animation: false });
     }
-    // poszerz lekko z obu stron
-    min = new Date(min.getFullYear(), min.getMonth(), 1);
-    max = new Date(max.getFullYear(), max.getMonth() + 1, 0);
-    return [min, max] as const;
-  }, [tasks]);
+  }
 
-  const totalDays = useMemo(
-    () => Math.max(1, daysBetween(minDate, maxDate)),
-    [minDate, maxDate]
-  );
-  const timelineWidth = useMemo(
-    () => Math.max(600, Math.round(totalDays * pxPerDay)),
-    [totalDays, pxPerDay]
-  );
+  function cancelAddingMode() {
+    setAddingOnTimeline(false);
+    addStartRef.current = null;
+    const rectEl = dragRectRef.current;
+    if (rectEl) {
+      rectEl.style.display = "none";
+    }
+    hideTooltip();
+  }
 
-  // Skala: data -> x
-  const xFromDate = (d: Date) => {
-    const clamped = clampDate(d, minDate, maxDate);
-    const ratio =
-      (clamped.getTime() - minDate.getTime()) /
-      (maxDate.getTime() - minDate.getTime());
-    return Math.round(ratio * timelineWidth);
-  };
-
-  // Dodatkowe metryki
-  const metrics = useMemo(() => {
-    const total = tasks.length;
-    const done = tasks.filter((t) => t.status === "done").length;
-    const doing = tasks.filter((t) => t.status === "doing").length;
-    const todo = tasks.filter((t) => t.status === "todo").length;
-    const avgDays = total
-      ? Math.round(
-          tasks.reduce((acc, t) => acc + daysBetween(t._start!, t._end!), 0) /
-            total
-        )
-      : 0;
-    return { total, done, doing, todo, avgDays };
-  }, [tasks]);
-
-  // Auto-scroll do "today" na wejściu
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const today = new Date();
-    const x = xFromDate(today);
-    // przewiń tak, żeby "today" było nieco z lewej
-    el.scrollTo({
-      left: Math.max(0, x - el.clientWidth * 0.3),
-      behavior: "smooth",
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timelineWidth]);
+  /* ===== Render ===== */
 
   return (
-    <div className="timeline-wrap">
-      <InlineStyles />
-
-      <div className="timeline-toolbar">
-        <input
-          className="tl-input"
-          placeholder="Szukaj zadania…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <div className="tl-group">
-          <span className="tl-label">Status:</span>
-          {(["todo", "doing", "done"] as ColKey[]).map((s) => (
+    <div className="timeline-tab card">
+      <div className="tls-toolbar">
+        <div className="tls-toolbar-left">
+          <div className="btn-group">
             <button
-              key={s}
-              className={
-                "tl-chip " + (statusSet.includes(s) ? "is-active" : "")
-              }
-              onClick={() =>
-                setStatusSet((prev) =>
-                  prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-                )
-              }
+              className="btn btn-icon"
+              onClick={() => zoom(-0.2)}
+              title="Zoom in (+)"
             >
-              {s.toUpperCase()}
+              ⊕ <span>Zoom in</span>
             </button>
-          ))}
-          <button className="tl-link" onClick={() => setStatusSet([])}>
-            wyczyść
-          </button>
-        </div>
-
-        <div className="tl-group">
-          <span className="tl-label">Priorytet:</span>
-          {([1, 2, 3] as Priority[]).map((p) => (
             <button
-              key={p}
-              className={
-                "tl-chip prio-" + p + (prioSet.includes(p) ? " is-active" : "")
-              }
-              onClick={() =>
-                setPrioSet((prev) =>
-                  prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-                )
-              }
+              className="btn btn-icon"
+              onClick={() => zoom(0.2)}
+              title="Zoom out (−)"
             >
-              {p === 3 ? "High" : p === 2 ? "Medium" : "Low"}
+              ⊖ <span>Zoom out</span>
             </button>
-          ))}
-          <button className="tl-link" onClick={() => setPrioSet([])}>
-            wyczyść
-          </button>
-        </div>
+            <button
+              className="btn btn-ghost"
+              onClick={() => timelineRef.current?.fit({ animation: false })}
+              title="Fit"
+            >
+              ⇱ Fit
+            </button>
+            <button className="btn btn-ghost" onClick={today} title="Today (T)">
+              📅 Today
+            </button>
+            <button className="btn btn-ghost" onClick={fitProject}>
+              📌 Fit project
+            </button>
+          </div>
 
-        <div className="tl-group" style={{ marginLeft: "auto" }}>
-          <span className="tl-label">Zoom:</span>
-          <input
-            type="range"
-            min={6}
-            max={40}
-            step={1}
-            value={pxPerDay}
-            onChange={(e) => setPxPerDay(parseInt(e.target.value, 10))}
-          />
-        </div>
-      </div>
-
-      <div className="timeline-metrics">
-        <Metric label="Tasks" value={String(metrics.total)} />
-        <Metric label="Done" value={String(metrics.done)} />
-        <Metric label="Doing" value={String(metrics.doing)} />
-        <Metric label="To do" value={String(metrics.todo)} />
-        <Metric label="Średni czas" value={`${metrics.avgDays} dni`} />
-      </div>
-
-      {isLoading ? (
-        <div className="tl-card tl-centered">Ładowanie…</div>
-      ) : (
-        <div className="timeline-scroller" ref={scrollRef}>
-          <div className="timeline-canvas" style={{ width: timelineWidth }}>
-            <MonthAxis
-              minDate={minDate}
-              maxDate={maxDate}
-              xFromDate={xFromDate}
+          <label className="snap-toggle">
+            <input
+              type="checkbox"
+              checked={snapToDay}
+              onChange={(e) => setSnapToDay(e.target.checked)}
             />
-            <TodayMarker x={xFromDate(new Date())} />
-            <Rows tasks={tasks} xFromDate={xFromDate} />
+            <span>Snap to day</span>
+          </label>
+
+          <div className="tls-filter">
+            <span className="tls-filter-icon">🔍</span>
+            <input
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              placeholder="Filter by task name…"
+            />
+          </div>
+
+          {/* Filtry status / priorytet */}
+          <div className="tls-filter-group">
+            <span className="tls-filter-label">Status</span>
+            <div className="tls-chips">
+              <button
+                type="button"
+                className={
+                  "tls-chip" + (statusFilter === "all" ? " is-active" : "")
+                }
+                onClick={() => setStatusFilter("all")}
+              >
+                All
+              </button>
+              {statusOptions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={
+                    "tls-chip" + (statusFilter === s ? " is-active" : "")
+                  }
+                  onClick={() => setStatusFilter(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tls-filter-group">
+            <span className="tls-filter-label">Priority</span>
+            <div className="tls-chips">
+              <button
+                type="button"
+                className={
+                  "tls-chip" + (priorityFilter === "all" ? " is-active" : "")
+                }
+                onClick={() => setPriorityFilter("all")}
+              >
+                All
+              </button>
+              {priorityOptions.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={
+                    "tls-chip" + (priorityFilter === p ? " is-active" : "")
+                  }
+                  onClick={() => setPriorityFilter(p)}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      )}
 
-      {isFetching && (
-        <div className="tl-muted" style={{ marginTop: 6 }}>
-          Odświeżanie…
+        {/* ŚRODEK – przycisk Add na osi */}
+        <div className="tls-toolbar-center">
+          <button
+            type="button"
+            className={
+              "btn btn-add-timeline" + (addingOnTimeline ? " is-active" : "")
+            }
+            onClick={() => {
+              if (addingOnTimeline) {
+                cancelAddingMode();
+              } else {
+                setAddingOnTimeline(true);
+              }
+            }}
+            title={
+              addingOnTimeline
+                ? "Click start and end date on the timeline to create a task (click to cancel)"
+                : "Add task on timeline (then click start and end date)"
+            }
+          >
+            ➕ Add task on timeline
+          </button>
+
+          {addingOnTimeline && (
+            <span className="badge badge-primary small">
+              Click start and end on timeline…
+            </span>
+          )}
         </div>
-      )}
-    </div>
-  );
-}
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric">
-      <div className="metric-value">{value}</div>
-      <div className="metric-label">{label}</div>
-    </div>
-  );
-}
-
-function MonthAxis({
-  minDate,
-  maxDate,
-  xFromDate,
-}: {
-  minDate: Date;
-  maxDate: Date;
-  xFromDate: (d: Date) => number;
-}) {
-  // wygeneruj segmenty miesięcy
-  const months: { label: string; x: number; w: number }[] = [];
-  let cur = startOfMonth(minDate);
-  while (cur <= maxDate) {
-    const end = endOfMonth(cur);
-    const x = xFromDate(cur);
-    const w = xFromDate(end) - xFromDate(cur) + 1 * 18; // mały zapas
-    const label = cur.toLocaleDateString(undefined, {
-      month: "short",
-      year: "numeric",
-    });
-    months.push({ label, x, w });
-    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
-  }
-  return (
-    <div className="axis">
-      {months.map((m, i) => (
-        <div key={i} className="axis-cell" style={{ left: m.x, width: m.w }}>
-          <span>{m.label}</span>
+        <div className="tls-toolbar-right">
+          {!addingOnTimeline && (
+            <span className="muted small">
+              {isFetching ? "Ładowanie zadań…" : "Gotowe"}
+            </span>
+          )}
+          <span className="divider" />
+          <span className="badge badge-light">
+            Tasks: {tasks.length} • Scheduled: {scheduled.length} • Unscheduled:{" "}
+            {unscheduled.length}
+          </span>
         </div>
-      ))}
-    </div>
-  );
-}
-
-function TodayMarker({ x }: { x: number }) {
-  return <div className="today" style={{ left: x }} />;
-}
-
-function Rows({
-  tasks,
-  xFromDate,
-}: {
-  tasks: NormalizedTask[];
-  xFromDate: (d: Date) => number;
-}) {
-  return (
-    <div className="rows">
-      {tasks.map((t) => (
-        <Row key={t.id} task={t} xFromDate={xFromDate} />
-      ))}
-    </div>
-  );
-}
-
-function Row({
-  task,
-  xFromDate,
-}: {
-  task: NormalizedTask;
-  xFromDate: (d: Date) => number;
-}) {
-  const startX = xFromDate(task._start!);
-  const endX = xFromDate(task._end!);
-  const width = Math.max(6, endX - startX || 6);
-
-  const pri: Priority = task.priority as any as Priority;
-  const status: ColKey = (task.status as any as ColKey) ?? "todo";
-
-  const bg =
-    status === "done" ? "#16a34a" : status === "doing" ? "#f59e0b" : "#64748b"; // zielony / bursztyn / szary
-  const outline =
-    pri >= 3
-      ? "2px solid #ef4444"
-      : pri === 2
-      ? "2px solid #eab308"
-      : "1px solid rgba(0,0,0,.15)";
-
-  return (
-    <div className="row">
-      <div className="row-title" title={task.title}>
-        <a className="row-link" href={`/tasks?focus=${task.id}`}>
-          {task.title}
-        </a>
       </div>
-      <div className="row-track">
+
+      <div className="tls-content">
         <div
-          className="row-bar"
-          style={{ left: startX, width, background: bg, border: outline }}
-          title={tooltipFor(task)}
-        />
+          className={"tls-main-wrapper" + (todayFlash ? " is-today-flash" : "")}
+        >
+          <div className="tls-main" ref={containerRef} />
+          <div ref={tooltipRef} className="tl-tooltip" />
+
+          {/* Hover card */}
+          {hoverTask && hoverPos && (
+            <div
+              className="hover-card"
+              style={{
+                left: `${hoverPos.x}px`,
+                top: `${hoverPos.y}px`,
+              }}
+              onMouseEnter={() => {
+                hoverLockedRef.current = true;
+                if (hoverHideTimeoutRef.current !== null) {
+                  window.clearTimeout(hoverHideTimeoutRef.current);
+                  hoverHideTimeoutRef.current = null;
+                }
+              }}
+              onMouseLeave={() => {
+                hoverLockedRef.current = false;
+                setHoverTask(null);
+                setHoverPos(null);
+              }}
+            >
+              <strong>{hoverTask.title}</strong>
+              {hoverTask.description && (
+                <p>
+                  {hoverTask.description.length > 200
+                    ? hoverTask.description.slice(0, 200) + "…"
+                    : hoverTask.description}
+                </p>
+              )}
+
+              <div className="hover-meta">
+                <span
+                  className={
+                    "hover-pill hover-prio " +
+                    priorityClassFromNumber(hoverTask.priority)
+                  }
+                >
+                  {getPriorityLabel(hoverTask.priority)}
+                </span>
+                {hoverTask.status && (
+                  <span className="hover-pill hover-status">
+                    {hoverTask.status}
+                  </span>
+                )}
+              </div>
+
+              {hoverTask.start_date && hoverTask.due_date && (
+                <div className="hover-dates">
+                  {hoverTask.start_date} → {hoverTask.due_date}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="hover-btn"
+                onClick={() => {
+                  setEditing(hoverTask);
+                  setHoverTask(null);
+                  setHoverPos(null);
+                }}
+              >
+                Edit task
+              </button>
+            </div>
+          )}
+
+          {!sideOpen && unscheduled.length > 0 && (
+            <button
+              className="tls-side-toggle"
+              onClick={() => setSideOpen(true)}
+            >
+              Unscheduled ({unscheduled.length})
+            </button>
+          )}
+        </div>
+
+        {sideOpen && (
+          <aside className="tls-side">
+            <div className="tls-side-header">
+              <div>
+                <div className="tls-side-title">Unscheduled tasks</div>
+                <div className="tls-side-subtitle">
+                  Zadania bez zakresu dat w projekcie
+                </div>
+              </div>
+              <div className="tls-side-header-right">
+                <span className="count-pill">{unscheduled.length}</span>
+                <button
+                  className="btn btn-icon btn-ghost small"
+                  onClick={() => setSideOpen(false)}
+                  title="Zwiń panel"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="tls-list">
+              {filteredUnscheduled.map((t) => {
+                const prioLabel = getPriorityLabel(t.priority);
+                return (
+                  <div key={t.id} className="tls-uns-item">
+                    <div className="tls-uns-main">
+                      <div className="tls-title" title={t.title}>
+                        {t.title}
+                      </div>
+                      {t.description && (
+                        <div className="tls-description">
+                          {t.description.length > 50
+                            ? t.description.slice(0, 50) + "…"
+                            : t.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="tls-uns-footer">
+                      <div className="tls-meta">
+                        <span
+                          className={`pill pill-prio ${priorityClassFromNumber(
+                            t.priority
+                          )}`}
+                        >
+                          {prioLabel}
+                        </span>
+                        <span className={`pill pill-status st-${t.status}`}>
+                          {t.status}
+                        </span>
+                      </div>
+                      <button
+                        className="btn btn-small btn-outline"
+                        onClick={() => setEditing(t)}
+                      >
+                        Set dates
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {!filteredUnscheduled.length && (
+                <div className="muted small tls-empty">
+                  Brak zadań bez dat pasujących do filtra
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
       </div>
+
+      {editing && (
+        <EditTaskModal
+          open
+          task={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={async (id: number, patch: Partial<CreateTaskPayload>) => {
+            const patchCache = dispatch(
+              tasksApi.util.updateQueryData("listTasks", queryArg, (draft) => {
+                const arr = draft?.results ?? [];
+                const idx = arr.findIndex((t) => t.id === id);
+                if (idx !== -1) {
+                  arr[idx] = { ...arr[idx], ...patch };
+                }
+              })
+            );
+            try {
+              await updateTask({ id, patch }).unwrap();
+              setEditing(null);
+            } catch {
+              patchCache.undo();
+            }
+          }}
+        />
+      )}
+
+      {creating.open && (
+        <AddTaskModal
+          open
+          onClose={() => setCreating({ open: false })}
+          onSubmit={async (payload: CreateTaskPayload) => {
+            const body: CreateTaskPayload = {
+              ...payload,
+              project: project.id,
+              start_date: payload.start_date ?? creating.startISO,
+              due_date: payload.due_date ?? creating.endISO,
+            };
+            try {
+              const created = await createTask(body).unwrap();
+
+              // dopisujemy nowy task do cache listTasks dla tego projektu
+              dispatch(
+                tasksApi.util.updateQueryData(
+                  "listTasks",
+                  queryArg,
+                  (draft) => {
+                    if (!draft) return;
+                    const arr = draft.results ?? [];
+                    if (!arr.find((t) => t.id === created.id)) {
+                      draft.results = [created, ...arr];
+                    }
+                  }
+                )
+              );
+
+              setCreating({ open: false });
+
+              // zielony highlight przez 20 sekund
+              if (created && typeof created.id === "number") {
+                setNewTaskId(created.id);
+                window.setTimeout(() => {
+                  setNewTaskId((current) =>
+                    current === created.id ? null : current
+                  );
+                }, 20000);
+              }
+            } catch {
+              // bez toastów
+            }
+          }}
+          defaultScope="project"
+          defaultProjectId={project.id}
+          lockScope
+        />
+      )}
     </div>
-  );
-}
-
-function tooltipFor(t: NormalizedTask) {
-  const fmt = (d: Date | null) => (d ? d.toLocaleDateString() : "–");
-  const days = t._start && t._end ? daysBetween(t._start, t._end) : 0;
-  const pr = t.priority as any;
-  const status = (t.status as any) ?? "todo";
-  return `${t.title}\n${fmt(t._start)} → ${fmt(
-    t._end
-  )} (${days} dni)\nStatus: ${String(status).toUpperCase()} | Priority: ${pr}`;
-}
-
-// ====== Wstrzyknięty CSS ======
-function InlineStyles() {
-  return (
-    <style>{`
-      .timeline-wrap{display:flex;flex-direction:column;gap:12px}
-      .timeline-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
-      .tl-input{min-width:260px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
-      .tl-group{display:flex;align-items:center;gap:8px}
-      .tl-label{color:#6b7280;font-size:12px}
-      .tl-chip{padding:6px 10px;border-radius:16px;border:1px solid #e5e7eb;background:#fff;font-size:12px}
-      .tl-chip.is-active{background:#111827;color:#fff;border-color:#111827}
-      .tl-chip.prio-3.is-active{background:#ef4444;border-color:#ef4444}
-      .tl-chip.prio-2.is-active{background:#eab308;border-color:#eab308;color:#111}
-      .tl-link{background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer}
-
-      .timeline-metrics{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr));gap:10px}
-      .metric{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-      .metric-value{font-weight:700;font-size:18px}
-      .metric-label{color:#6b7280;font-size:12px}
-
-      .timeline-scroller{position:relative;width:100%;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#fafafa}
-      .timeline-canvas{position:relative;min-height:520px}
-
-      .axis{position:sticky;top:0;z-index:2;display:block;height:36px;border-bottom:1px solid #e5e7eb;background:linear-gradient(#fff,#fff);}
-      .axis-cell{position:absolute;top:0;height:36px;border-left:1px dashed #e5e7eb;padding:8px 6px;box-sizing:border-box;color:#6b7280;font-size:12px;white-space:nowrap}
-
-      .today{position:absolute;top:36px;bottom:0;width:2px;background:#ef4444;opacity:.9}
-
-      .rows{position:relative;padding-top:12px}
-      .row{display:grid;grid-template-columns:280px 1fr;align-items:center;min-height:46px;border-bottom:1px solid #f1f5f9}
-      .row-title{padding:8px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .row-link{color:#111827;text-decoration:none}
-      .row-link:hover{text-decoration:underline}
-      .row-track{position:relative;height:34px}
-      .row-bar{position:absolute;top:6px;height:22px;border-radius:6px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
-
-      .tl-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}
-      .tl-centered{display:flex;align-items:center;justify-content:center;height:240px}
-      .tl-muted{color:#6b7280;font-size:12px}
-    `}</style>
   );
 }
