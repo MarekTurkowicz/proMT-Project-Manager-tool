@@ -115,6 +115,15 @@ class FundingViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "start_date", "end_date", "amount_total", "name"]
     ordering = ["-created_at"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        project_id = self.request.query_params.get("project")
+        if project_id:
+            qs = qs.filter(funding_projects__project_id=project_id).distinct()
+
+        return qs
+
 
 class FundingTaskViewSet(viewsets.ModelViewSet):
     queryset = FundingTask.objects.select_related("funding").all().order_by("id")
