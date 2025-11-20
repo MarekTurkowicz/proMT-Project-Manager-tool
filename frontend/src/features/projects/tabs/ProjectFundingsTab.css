@@ -1,0 +1,867 @@
+/* ROOT + HEADER
+   -------------------------------------------------- */
+
+.pft-root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pft-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.pft-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pft-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.pft-subtitle {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #4b5563;
+}
+
+.pft-subtitle-muted {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.pft-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pft-add-btn {
+  font-size: 0.9rem;
+}
+
+/* KPI STRIP
+   -------------------------------------------------- */
+
+.pft-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+@media (max-width: 1024px) {
+  .pft-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pft-kpi-item {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.pft-kpi-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.pft-kpi-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.pft-kpi-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.pft-kpi-meta-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.pft-kpi-meta-lines span strong {
+  font-weight: 600;
+}
+
+/* Link funding (5. kafelek) */
+
+.pft-kpi-item.pft-kpi-link {
+  justify-content: space-between;
+}
+
+.pft-kpi-link-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.pft-select {
+  flex: 1;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 6px 8px;
+  font-size: 0.88rem;
+  background: #ffffff;
+}
+
+.pft-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+}
+
+.pft-link-btn {
+  white-space: nowrap;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pft-link-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.pft-link-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* LAYOUT
+   -------------------------------------------------- */
+
+.pft-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: flex-start;
+}
+
+@media (max-width: 1100px) {
+  .pft-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pft-main {
+  min-width: 0;
+}
+
+.pft-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pft-list-card,
+.pft-side-card {
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+/* LIST TABS + BADGE
+   -------------------------------------------------- */
+
+.pft-list-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pft-list-tab {
+  border: none;
+  background: #f3f4f6;
+  color: #4b5563;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.pft-list-tab.is-active {
+  background: #111827;
+  color: #f9fafb;
+}
+
+.pft-badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.pft-badge-muted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* STATUS FILTERS
+   -------------------------------------------------- */
+
+.pft-status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.pft-status-filter {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: #4b5563;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pft-status-filter.is-active {
+  background: #111827;
+  color: #f9fafb;
+  border-color: #111827;
+}
+
+.pft-status-count {
+  background: #f97316;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+}
+
+/* EMPTY STATES
+   -------------------------------------------------- */
+
+.pft-empty {
+  padding: 14px;
+  font-size: 0.88rem;
+  color: #6b7280;
+}
+
+.pft-empty.mini {
+  padding: 8px 2px;
+  font-size: 0.8rem;
+}
+
+.pft-empty-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.pft-empty-text {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* FUNDING LIST + ROW
+   -------------------------------------------------- */
+
+.pft-funding-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.pft-funding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pft-funding-row {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  overflow: hidden;
+}
+
+.pft-funding-row:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+/* TOP: BUTTON / SUMMARY */
+
+.pft-funding-top {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.pft-funding-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.pft-funding-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.pft-funding-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.pft-tag {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* Status chipy */
+
+.pft-status-chip {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.pft-status-chip-active {
+  background: #dcfce7;
+  color: #166534;
+}
+.pft-status-chip-upcoming {
+  background: #e0f2fe;
+  color: #075985;
+}
+.pft-status-chip-finished {
+  background: #e5e7eb;
+  color: #374151;
+}
+.pft-status-chip-nodates {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Health chip */
+
+.pft-health-chip {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.pft-health-chip-good {
+  background: #dcfce7;
+  color: #166534;
+}
+.pft-health-chip-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+.pft-health-chip-bad {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.pft-health-chip-muted {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+/* Meta + dates */
+
+.pft-funding-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pft-funding-amount {
+  font-weight: 500;
+}
+
+.pft-funding-dates {
+  font-size: 0.8rem;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pft-funding-timeline {
+  color: #4b5563;
+}
+
+.pft-funding-report {
+  color: #b91c1c;
+}
+
+/* Right side: mini progress, toggle */
+
+.pft-funding-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.pft-mini-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.pft-mini-progress-track {
+  position: relative;
+  width: 110px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.pft-mini-progress-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.pft-mini-progress-label {
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.btn-ghost.pft-open-indicator {
+  border-radius: 999px;
+  border: none;
+  background: #e5e7eb;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #374151;
+}
+
+.btn-ghost.pft-open-indicator:hover {
+  background: #d1d5db;
+}
+
+/* BODY (akordeon content) */
+
+.pft-funding-body {
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 8px 10px 10px;
+}
+
+.pft-funding-body-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pft-funding-body-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.pft-funding-body-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pft-funding-body-meta {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.pft-funding-body-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pft-funding-tasks {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+  margin-top: 4px;
+}
+
+.pft-funding-task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pft-funding-task-row {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.pft-task-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pft-task-title {
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.pft-task-desc {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.pft-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-top: 2px;
+  font-size: 0.75rem;
+}
+
+.pft-task-date {
+  color: #6b7280;
+}
+
+/* SIDE CARDS
+   -------------------------------------------------- */
+
+.pft-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pft-section-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Budget coverage / Funding completion layout re-use */
+
+.pft-completion-top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.pft-completion-chart {
+  position: relative;
+  width: 130px;
+  height: 130px;
+}
+
+.pft-completion-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pft-completion-pct {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pft-completion-label {
+  font-size: 0.76rem;
+  color: #6b7280;
+}
+
+.pft-completion-meta {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #4b5563;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pft-completion-line {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pft-completion-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pft-completion-row {
+  font-size: 0.8rem;
+}
+
+.pft-completion-row-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.pft-completion-name {
+  font-weight: 500;
+}
+
+.pft-completion-small {
+  color: #6b7280;
+}
+
+/* wspólny progress bar */
+
+.pft-progress-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.pft-progress-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+/* specyficzne warianty do highlights */
+
+.pft-progress-fill-risk {
+  background: linear-gradient(90deg, #f97316, #b91c1c);
+}
+
+.pft-progress-fill-active {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
+
+/* Risks & alerts */
+
+.pft-risk-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.pft-risk-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pft-risk-bad {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Deadlines */
+
+.pft-deadline-section {
+  margin-top: 4px;
+}
+
+.pft-deadline-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.pft-deadline-section-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.pft-deadline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pft-deadline-item {
+  font-size: 0.8rem;
+  padding-top: 2px;
+}
+
+.pft-deadline-title {
+  font-weight: 500;
+}
+
+.pft-deadline-meta {
+  color: #6b7280;
+}
+
+/* BUDGET INSIGHTS
+   -------------------------------------------------- */
+
+.pft-budget-root {
+  padding-top: 4px;
+}
+
+.pft-chart-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.pft-chart-tab {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #4b5563;
+}
+
+.pft-chart-tab.is-active {
+  background: #111827;
+  color: #f9fafb;
+  border-color: #111827;
+}
+
+.pft-chart-inner {
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 6px 8px;
+}
+
+.pft-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 4px;
+  font-size: 0.78rem;
+}
+
+.pft-chart-legend-item {
+  color: #4b5563;
+}
+
+/* Highlights */
+
+.pft-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.pft-highlights-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pft-highlights-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pft-highlights-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.pft-highlights-sub {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.pft-highlights-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pft-highlights-bar-label {
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
+/* Misc
+   -------------------------------------------------- */
+
+.pft-side-card {
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1024px) {
+  .pft-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.pft-kpi-new-btn {
+  margin-top: 6px;
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 6px 8px;
+}

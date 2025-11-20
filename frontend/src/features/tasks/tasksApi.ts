@@ -6,6 +6,8 @@ type Paged<T> = { count: number; next: string | null; previous: string | null; r
 export type TasksListParams = {
   project?: number;
   funding?: number;
+  project_funding?: number;
+  funding_scoped?: string;
   unassigned?: boolean;
   status?: "todo" | "doing" | "done";
   ordering?: "-created_at" | "created_at" | "due_date" | "-due_date" | "priority" | "-priority";
