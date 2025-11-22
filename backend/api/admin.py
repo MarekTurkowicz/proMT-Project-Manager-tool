@@ -7,6 +7,8 @@ from .models import (
     ProjectFunding,
     Task,
     TaskScope,
+    TaskAssignment,
+    UserProfile,
 )
 
 # ---------- Inlines ----------
@@ -255,3 +257,21 @@ class ProjectFundingAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ["project", "funding"]
     ordering = ("-created_at",)
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "role", "phone")
+    list_filter = ("role",)
+
+
+@admin.register(TaskAssignment)
+class TaskAssignmentAdmin(admin.ModelAdmin):
+    list_display = ("task", "user", "assigned_by", "assigned_at", "worked_hours")
+    list_filter = ("assigned_by", "user")
+    search_fields = (
+        "task__title",
+        "user__username",
+        "user__first_name",
+        "user__last_name",
+    )

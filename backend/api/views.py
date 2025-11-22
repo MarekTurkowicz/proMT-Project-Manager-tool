@@ -1,20 +1,35 @@
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
-from django.db.models import Q
+from django.db.models import Q, Count
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions
 from rest_framework.throttling import ScopedRateThrottle
-
-from .models import Funding, FundingTask, Project, ProjectFunding, Task
+from rest_framework.permissions import IsAuthenticated
+from .models import (
+    Funding,
+    FundingTask,
+    Project,
+    ProjectFunding,
+    Task,
+    TaskAssignment,
+    UserProfile,
+)
 from .serializers import (
     FundingSerializer,
     FundingTaskSerializer,
     ProjectSerializer,
     ProjectFundingSerializer,
     TaskSerializer,
+    TaskAssignmentSerializer,
+    UserSerializer,
+    UserDetailSerializer,
 )
+from django_filters.rest_framework import DjangoFilterBackend
 
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # ─────────────────────────────
 # Health + Me
@@ -244,3 +259,41 @@ class TaskViewSet(viewsets.ModelViewSet):
         if status_:
             qs = qs.filter(status=status_)
         return qs
+
+
+class TaskAssignmentViewSet(viewsets.ModelViewSet):
+    queryset = TaskAssignment.objects.select_related(
+        "task",
+        "user",
+        "assigned_by",
+    )
+    serializer_class = TaskAssignmentSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["task", "user"]
+
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Do listy userów i szczegółów (karta usera).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = User.objects.all().select_related("profile")
+        # policz zadania i done-zadania:
+        qs = qs.annotate(
+            tasks_count=Count("tasks", distinct=True),
+            done_tasks_count=Count(
+                "tasks",
+                filter=Q(tasks__status=Task.Status.DONE),
+                distinct=True,
+            ),
+        )
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return UserDetailSerializer  # /api/users/<id>/
+        return UserSerializer  # /api/users/

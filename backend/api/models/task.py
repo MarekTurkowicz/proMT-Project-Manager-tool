@@ -1,46 +1,102 @@
-from django.db import models
-from django.db.models import Q, F
+"""Task and TaskScope models.
+
+These models represent generic tasks and the context (scope) in which a task
+belongs (project, funding, or a project-funding relation).
+"""
+
+from __future__ import annotations
+
 from django.conf import settings
+from django.db import models
+from django.db.models import F, Q
 
 
 class Task(models.Model):
+    """Represents a generic task.
+
+    A task is independent of any particular project or funding. Its context is
+    defined separately via the TaskScope model.
+
+    Attributes:
+        title: Short human-readable name of the task.
+        description: Optional detailed description of the task.
+        status: Current workflow status (todo/doing/done).
+        priority: Priority level of the task (low/medium/high).
+        start_date: Optional planned start date.
+        due_date: Optional deadline date.
+        cost_amount: Optional monetary cost associated with the task.
+        cost_currency: ISO-like currency code for cost_amount (default: "PLN").
+        receipt_url: Optional URL to the receipt or related document.
+        receipt_note: Optional free-form note about the receipt/cost.
+        assignees: Users assigned to the task through TaskAssignment.
+        est_hours: Estimated duration of the task in hours.
+        template: Optional reference to a FundingTask template.
+        created_at: Timestamp when the task was created.
+        updated_at: Timestamp when the task was last updated.
+    """
+
     class Status(models.TextChoices):
+        """Supported workflow states for a task."""
+
         TODO = "todo", "To do"
         DOING = "doing", "Doing"
         DONE = "done", "Done"
 
     class Priority(models.IntegerChoices):
+        """Priority levels used to sort or filter tasks."""
+
         LOW = 1, "Low"
         MEDIUM = 2, "Medium"
         HIGH = 3, "High"
 
-    # ⬇️ CZYSTY Task — bez FK do Project/Funding
+    # Basic task properties
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+
+    # Workflow status and priority
     status = models.CharField(
-        max_length=10, choices=Status.choices, default=Status.TODO
+        max_length=10,
+        choices=Status.choices,
+        default=Status.TODO,
     )
-    priority = models.IntegerField(choices=Priority.choices, default=Priority.MEDIUM)
+    priority = models.IntegerField(
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+    )
+
+    # Optional scheduling information
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
 
-    # opcjonalne koszty/załączki
+    # Optional cost/expense-related fields
     cost_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     cost_currency = models.CharField(max_length=3, default="PLN")
     receipt_url = models.URLField(blank=True)
     receipt_note = models.TextField(blank=True)
 
-    # przypisania
+    # Assignment relations via TaskAssignment (M2M through table)
     assignees = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="tasks"
-    )
-    est_hours = models.DecimalField(
-        max_digits=6, decimal_places=2, null=True, blank=True
+        settings.AUTH_USER_MODEL,
+        through="api.TaskAssignment",
+        through_fields=("task", "user"),
+        blank=True,
+        related_name="tasks",
     )
 
-    # jeśli używasz „szablonów zadań finansowania”
+    # Estimated work time in hours
+    est_hours = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    # Optional reference to a FundingTask template
     template = models.ForeignKey(
         "api.FundingTask",
         on_delete=models.SET_NULL,
@@ -49,10 +105,14 @@ class Task(models.Model):
         related_name="instances",
     )
 
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta options for Task."""
+
+        # Ensure that start_date is not after due_date when both are set.
         constraints = [
             models.CheckConstraint(
                 check=(
@@ -64,83 +124,6 @@ class Task(models.Model):
             ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a human-readable representation of the task."""
         return self.title
-
-
-class TaskScope(models.Model):
-    """
-    Dokładnie JEDEN kontekst dla Task:
-    - project XOR funding XOR project_funding
-    (brak rekordu TaskScope => task „nieprzydzielony”)
-    """
-
-    task = models.OneToOneField(
-        "api.Task", on_delete=models.CASCADE, related_name="scope"
-    )
-
-    project = models.ForeignKey(
-        "api.Project",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="task_scopes",
-    )
-    funding = models.ForeignKey(
-        "api.Funding",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="task_scopes",
-    )
-    project_funding = models.ForeignKey(
-        "api.ProjectFunding",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="task_scopes",
-    )
-
-    # znacznik: sklonowane z finansowania (po ProjectFunding)
-    funding_scoped = models.BooleanField(default=False)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                name="taskscope_exactly_one",
-                check=(
-                    (
-                        Q(project__isnull=False)
-                        & Q(funding__isnull=True)
-                        & Q(project_funding__isnull=True)
-                    )
-                    | (
-                        Q(project__isnull=True)
-                        & Q(funding__isnull=False)
-                        & Q(project_funding__isnull=True)
-                    )
-                    | (
-                        Q(project__isnull=True)
-                        & Q(funding__isnull=True)
-                        & Q(project_funding__isnull=False)
-                    )
-                ),
-            ),
-        ]
-        indexes = [
-            models.Index(fields=["project"]),
-            models.Index(fields=["funding"]),
-            models.Index(fields=["project_funding"]),
-            models.Index(fields=["funding_scoped"]),
-        ]
-
-    def __str__(self):
-        if self.project_id:
-            return f"scope:project={self.project_id}"
-        if self.funding_id:
-            return f"scope:funding={self.funding_id}"
-        if self.project_funding_id:
-            return f"scope:PF={self.project_funding_id}"
-        return "scope:?"

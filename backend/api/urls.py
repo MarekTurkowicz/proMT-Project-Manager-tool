@@ -7,6 +7,8 @@ from .views import (
     ProjectViewSet,
     ProjectFundingViewSet,
     TaskViewSet,
+    TaskAssignmentViewSet,
+    UserViewSet,
 )
 
 
@@ -16,6 +18,8 @@ router.register(r"funding-tasks", FundingTaskViewSet, basename="fundingtask")
 router.register(r"projects", ProjectViewSet, basename="project")
 router.register(r"project-fundings", ProjectFundingViewSet, basename="projectfunding")
 router.register(r"tasks", TaskViewSet, basename="task")
+router.register(r"task-assignments", TaskAssignmentViewSet, basename="task-assignment")
+router.register(r"users", UserViewSet, basename="user")
 
 urlpatterns = [
     path("health/", health, name="health"),
