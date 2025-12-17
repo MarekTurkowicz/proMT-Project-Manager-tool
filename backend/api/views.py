@@ -281,15 +281,18 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = User.objects.all().select_related("profile")
-        # policz zadania i done-zadania:
-        qs = qs.annotate(
-            tasks_count=Count("tasks", distinct=True),
-            done_tasks_count=Count(
-                "tasks",
-                filter=Q(tasks__status=Task.Status.DONE),
-                distinct=True,
-            ),
+        qs = (
+            User.objects.all()
+            .select_related("profile")
+            .annotate(
+                tasks_count=Count("tasks", distinct=True),
+                done_tasks_count=Count(
+                    "tasks",
+                    filter=Q(tasks__status=Task.Status.DONE),
+                    distinct=True,
+                ),
+            )
+            .order_by("id")
         )
         return qs
 

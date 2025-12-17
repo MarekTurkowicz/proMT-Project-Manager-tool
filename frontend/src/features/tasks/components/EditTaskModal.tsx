@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   useForm,
   type FieldErrors,
@@ -10,6 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { usePickProjectsQuery, usePickFundingsQuery } from "../tasksApi";
 import type { Task, CreateTaskPayload } from "../types";
 import "./EditTaskModal.css"; // osobny plik, ale identyczny jak Add (poniżej CSS)
+import { useListUsersQuery } from "../../api/usersApi";
+import type { AppUser } from "../../types/users";
 
 type Scope = "unassigned" | "project" | "funding";
 
@@ -109,6 +111,8 @@ export default function EditTaskModal({
   onClose,
   onSubmit,
 }: EditTaskModalProps) {
+  const { data: users = [], isLoading: usersLoading } = useListUsersQuery();
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
   const { data: projectOptions = [], isLoading: lp } = usePickProjectsQuery();
   const { data: fundingOptions = [], isLoading: lf } = usePickFundingsQuery();
 
@@ -164,6 +168,7 @@ export default function EditTaskModal({
       projectId: task.scope_project ? String(task.scope_project) : "",
       fundingId: task.scope_funding ? String(task.scope_funding) : "",
     });
+    setAssigneeIds(task.assignees ? task.assignees.map((u) => u.id) : []);
   }, [task, reset, open]);
 
   const scope = watch("scope") as Scope;
@@ -191,6 +196,7 @@ export default function EditTaskModal({
       project: null,
       funding: null,
       project_funding: null,
+      assignee_ids: assigneeIds,
     };
 
     if (values.scope === "project") {
@@ -410,6 +416,41 @@ export default function EditTaskModal({
                 rows={2}
                 {...register("receipt_note")}
               />
+            </div>
+
+            {/* Assignees */}
+            <div>
+              <label className="form-label">Assignees</label>
+
+              {usersLoading && (
+                <div className="muted small">Ładowanie listy użytkowników…</div>
+              )}
+
+              {!usersLoading && users.length > 0 && (
+                <select
+                  multiple
+                  className="form-multiselect"
+                  value={assigneeIds.map(String)}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map(
+                      (opt) => Number(opt.value)
+                    );
+                    setAssigneeIds(selected);
+                  }}
+                >
+                  {users.map((u: AppUser) => (
+                    <option key={u.id} value={u.id}>
+                      {u.username}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {!usersLoading && users.length === 0 && (
+                <div className="muted small">
+                  Brak dostępnych użytkowników do przypisania.
+                </div>
+              )}
             </div>
 
             {/* Scope */}
