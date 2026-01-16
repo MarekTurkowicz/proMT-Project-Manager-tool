@@ -1,4 +1,3 @@
-# backend/api/admin.py
 from django.contrib import admin
 from .models import (
     Project,
@@ -11,14 +10,8 @@ from .models import (
     UserProfile,
 )
 
-# ---------- Inlines ----------
-
 
 class TaskScopeInline(admin.StackedInline):
-    """
-    Edycja 'kontekstu' zadania (project | funding | project_funding) obok Taska.
-    OneToOne, ale admin traktuje to jako inline.
-    """
 
     model = TaskScope
     fk_name = "task"
@@ -28,9 +21,6 @@ class TaskScopeInline(admin.StackedInline):
 
 
 class FundingTaskInline(admin.TabularInline):
-    """
-    Lista szablonów zadań (FundingTask) na widoku Funding.
-    """
 
     model = FundingTask
     extra = 0
@@ -38,9 +28,6 @@ class FundingTaskInline(admin.TabularInline):
 
 
 class ProjectFundingInline(admin.TabularInline):
-    """
-    Lista powiązań projekt–finansowanie na widoku Project.
-    """
 
     model = ProjectFunding
     extra = 0
@@ -48,11 +35,6 @@ class ProjectFundingInline(admin.TabularInline):
 
 
 class ProjectTaskScopeInline(admin.TabularInline):
-    """
-    Zadania należące bezpośrednio do projektu (TaskScope.project = <projekt>).
-    Używamy TaskScope jako inline z FK na 'project'.
-    W polu 'task' możesz wybrać istniejący Task albo kliknąć zielone "+" i dodać nowy.
-    """
 
     model = TaskScope
     fk_name = "project"
@@ -60,11 +42,9 @@ class ProjectTaskScopeInline(admin.TabularInline):
     verbose_name = "Project task"
     verbose_name_plural = "Project tasks"
 
-    # pokazujemy tylko pola potrzebne dla „projectowego” scope
     fields = ("task", "funding_scoped")
     autocomplete_fields = ["task"]
 
-    # nie pozwalamy w tym inline’ie edytować innych scope’ów (funding/PF)
     exclude = ("funding", "project_funding")
 
     def get_queryset(self, request):
@@ -73,8 +53,6 @@ class ProjectTaskScopeInline(admin.TabularInline):
 
     def get_formset(self, request, obj=None, **kwargs):
         FormSet = super().get_formset(request, obj, **kwargs)
-        # 'funding_scoped' dla zadań projektowych sensownie powinno być False
-        # Zrobimy pole tylko do odczytu i ustawimy domyślnie False.
         base_fields = FormSet.form.base_fields
         if "funding_scoped" in base_fields:
             base_fields["funding_scoped"].initial = False
@@ -92,10 +70,10 @@ class TaskAdmin(admin.ModelAdmin):
         "title",
         "status",
         "priority",
-        "project",  # z TaskScope
-        "funding",  # z TaskScope
-        "project_funding",  # z TaskScope
-        "funding_scoped",  # z TaskScope
+        "project",
+        "funding",
+        "project_funding",
+        "funding_scoped",
         "due_date",
         "created_at",
     )
@@ -125,7 +103,6 @@ class TaskAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
     inlines = [TaskScopeInline]
 
-    # --- kolumny pochodzące z TaskScope (safe na brak scope):
     def project(self, obj):
         return getattr(getattr(obj, "scope", None), "project", None)
 

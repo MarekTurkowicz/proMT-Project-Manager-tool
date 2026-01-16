@@ -65,13 +65,12 @@ def me(request):
 @permission_classes([permissions.AllowAny])
 @ensure_csrf_cookie
 def auth_csrf(request):
-    # Ustawia cookie `csrftoken`
     return Response({"detail": "CSRF cookie set"})
 
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
-@csrf_protect  # wymaga nagłówka X-CSRFToken z cookie
+@csrf_protect
 def auth_login(request):
     username = request.data.get("username")
     password = request.data.get("password")
@@ -95,7 +94,6 @@ def auth_login(request):
     )
 
 
-# anty brute-force: 5/min (skonfiguruj scope w settings → DEFAULT_THROTTLE_RATES['auth_login'])
 auth_login.throttle_classes = [ScopedRateThrottle]
 auth_login.throttle_scope = "auth_login"
 
@@ -112,8 +110,6 @@ def auth_logout(request):
 # Skrótowa perm-class
 # ─────────────────────────────
 class IsAuthenticated(permissions.IsAuthenticated):
-    """Skrótowo, żeby mieć spójną nazwę."""
-
     pass
 
 
@@ -164,15 +160,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "start_date", "end_date", "name", "status"]
     ordering = ["-created_at"]
 
-    # Wszystkie akcje wymagają zalogowania (wewnętrzna appka)
-    # Jeśli chcesz, możesz dopuścić publiczne list/retrieve – wtedy odkomentuj:
-    # def get_permissions(self):
-    #     if self.action in ["list", "retrieve"]:
-    #         return [permissions.AllowAny()]
-    #     return [IsAuthenticated()]
-
     def perform_create(self, serializer):
-        # owner = przesłany w payloadzie lub aktualny user, a jeśli brak logowania → None
         user = self.request.user
         provided_owner = serializer.validated_data.get("owner")
 
@@ -298,5 +286,5 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "retrieve":
-            return UserDetailSerializer  # /api/users/<id>/
-        return UserSerializer  # /api/users/
+            return UserDetailSerializer
+        return UserSerializer
