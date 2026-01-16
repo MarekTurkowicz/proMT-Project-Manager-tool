@@ -1,4 +1,3 @@
-// frontend/src/features/projects/ProjectEditPage.tsx
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useGetByIdQuery, useUpdateMutation } from "./projectsApi";
@@ -14,12 +13,12 @@ const ProjectSchema = z
     start_date: z.string().nullable().optional(),
     end_date: z.string().nullable().optional(),
     funding_ids: z.array(z.number()).optional().default([]),
-    owner: z.number().nullable().optional().default(null), // ⇦ nowy field
+    owner: z.number().nullable().optional().default(null),
   })
   .refine(
     (v) => {
       if (!v.start_date || !v.end_date) return true;
-      return v.start_date <= v.end_date; // ISO YYYY-MM-DD porównuje się leksykograficznie
+      return v.start_date <= v.end_date;
     },
     {
       path: ["end_date"],
@@ -30,12 +29,10 @@ const ProjectSchema = z
 type ProjectForm = z.infer<typeof ProjectSchema>;
 
 export default function ProjectEditPage() {
-  // id projektu z URL
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   const navigate = useNavigate();
 
-  // pobierz szczegóły projektu
   const { data: project, isLoading, isError } = useGetByIdQuery(id);
 
   const form = useForm<ProjectForm>({
@@ -60,7 +57,6 @@ export default function ProjectEditPage() {
     watch,
   } = form;
 
-  // gdy przyjdzie projekt z API — wypełnij formularz
   useEffect(() => {
     if (!project) return;
     reset({
@@ -86,7 +82,6 @@ export default function ProjectEditPage() {
   }
 
   async function onSubmit(values: ProjectForm) {
-    // normalizacja pustych wartości dat do null
     const patch = {
       ...values,
       description: values.description || "",
@@ -106,7 +101,6 @@ export default function ProjectEditPage() {
   if (isError || !project)
     return <div style={{ padding: 24 }}>Nie znaleziono projektu.</div>;
 
-  // odczyt aktualnej listy funding_ids do pola tekstowego
   const fundingIdsText = (watch("funding_ids") ?? []).join(", ");
 
   return (
@@ -206,7 +200,6 @@ export default function ProjectEditPage() {
                 }
               );
             }}
-            // pokaż wartość z formularza
             value={watch("owner") ?? ""}
           />
           {errors.owner && (

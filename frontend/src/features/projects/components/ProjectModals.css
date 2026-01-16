@@ -1,168 +1,268 @@
-/* === OVERLAY & WINDOW === */
+:root {
+  --bg: #ffffff;
+  --page: #f6f8fb;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --border: #dfe6ef;
+  --soft: #eef2f7;
+  --soft2: #fbfdff;
+  --primary: #4f46e5;
+  --danger: #dc2626;
+  --radius: 14px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06);
+  --shadow2: 0 18px 30px rgba(0,0,0,.14);
+}
+
+/* overlay */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.45); /* semi-black */
+  background: rgba(15,23,42,.45);
   backdrop-filter: blur(2px);
-  display: grid;
-  place-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 96px 16px 16px;
   z-index: 50;
-  padding: 16px; /* margines na mobile */
 }
 
+/* window */
 .modal-window {
+  width: min(92vw, 780px);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow2);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  width: min(92vw, 760px);      /* responsywnie */
-  max-height: min(92vh, 860px); /* KLUCZ: ograniczamy wysokość */
-  background: #ffffff;
-  border-radius: 14px;          /* trochę większe zaokrąglenie */
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;             /* dla sticky header/footer */
-  border: 1px solid #e5e7eb;    /* delikatny border */
 }
 
-/* Mobile: pełny ekran (opcjonalny) */
-@media (max-width: 640px) {
-  .modal-window {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    border-radius: 0;
-  }
-}
-
-/* === HEADER & FOOTER (sticky) === */
-.modal-header,
-.modal-footer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 18px;           /* trochę większy „oddech” */
-  background: #ffffff;
-}
-
+/* header */
 .modal-header {
+  display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid #e5e7eb; /* gray-200 */
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
-.modal-footer {
-  justify-content: flex-end;
-  border-top: 1px solid #e5e7eb;
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  background: #fafafa;
-}
+.modal-head-left { display: grid; gap: 2px; }
 
-/* Tytuł + ikonka zamykania */
 .modal-title {
-  font-size: 1.125rem;
-  font-weight: 600;
   margin: 0;
+  font-size: 1.18rem;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em;
+  color: var(--ink); /* CZARNE */
 }
 
+.modal-subtitle {
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+/* close btn */
 .icon-btn {
   border: none;
   background: transparent;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   line-height: 1;
-  padding: 4px 8px;
+  padding: 6px 10px;
   cursor: pointer;
-  color: #4b5563; /* gray-600 */
+  color: var(--ink); /* CZARNE */
+  opacity: .75;
 }
-.icon-btn:hover { color: #111827; /* gray-900 */ }
+.icon-btn:hover { opacity: 1; }
 
-/* === BODY SCROLL === */
+/* body */
 .modal-body {
-  overflow-y: auto;   /* KLUCZ: wewnętrzny scrollbar */
-  padding: 18px;      /* większe odległości od krawędzi */
+  padding: 10px;
+  background: var(--page);
   display: grid;
-  gap: 14px;
+  gap: 10px;
+  overflow: auto;
+  max-height: calc(90vh - 140px);
 }
 
-/* === FORM LAYOUT === */
-.modal-form {
-  display: contents; /* header/body/footer jako rodzeństwo w form */
+/* cards + accordions */
+.card, .accordion {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-.form-grid {
+.card {
+  padding: 10px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
-@media (min-width: 640px) {
-  .form-grid {
-    grid-template-columns: 1fr 1fr; /* 2 kolumny na >=640px */
-  }
+
+.section-title {
+  font-weight: 850;
+  color: var(--ink); /* CZARNE */
+  font-size: .92rem;
 }
+
+.field { display: grid; gap: 6px; }
 
 .form-label {
-  display: block;
-  font-size: 0.9rem;
-  color: #374151; /* gray-700 */
-  margin-bottom: 6px;
+  font-size: .8rem;
+  color: var(--muted);
+  font-weight: 650;
 }
 
+/* inputs */
 .form-input,
 .form-textarea,
 .form-select {
   width: 100%;
-  border: 1px solid #e5e7eb; /* gray-200 */
-  border-radius: 10px;        /* trochę większy radius */
-  padding: 10px 12px;
-  font-size: 0.95rem;
-  outline: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   background: #fff;
-}
-.form-input:focus,
-.form-textarea:focus,
-.form-select:focus {
-  border-color: #3b82f6; /* blue-500 */
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  color: var(--ink) !important; /* CZARNE (wymuszone) */
+  font-size: .92rem;
 }
 
-/* === BUTTONS === */
-.btn-primary {
-  background: #2563eb; /* blue-600 */
-  color: white;
-  border: none;
-  border-radius: 10px;
+.form-input,
+.form-select {
   height: 40px;
-  padding: 0 16px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0 12px;
+  line-height: 40px;
 }
-.btn-primary:hover { background: #1d4ed8; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.form-textarea {
+  padding: 9px 12px;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.textarea-compact { resize: vertical; }
+
+/* select arrow */
+.form-select {
+  padding-right: 34px;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+
+/* grid for dates side-by-side */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+@media(max-width:560px){
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* accordion */
+.accordion { overflow: hidden; }
+
+.acc-trigger {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--soft2);
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--ink); /* CZARNE */
+}
+
+.acc-title { color: var(--ink); }
+
+.acc-body { padding: 10px; }
+
+/* footer */
+.modal-footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #fafafa;
+}
+
+/* buttons */
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:disabled { opacity: .65; cursor: not-allowed; }
 
 .btn-secondary {
-  background: #e5e7eb; /* gray-200 */
-  color: #111827;       /* gray-900 */
-  border: none;
-  border-radius: 10px;
-  height: 40px;
-  padding: 0 14px;
-  font-weight: 600;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 12px;
   cursor: pointer;
+  color: var(--ink); /* CZARNE */
 }
-.btn-secondary:hover { background: #d1d5db; }
 
-/* === ERRORS === */
+/* errors */
 .input-invalid {
-  border-color: #dc2626 !important; /* red-600 */
-  background-color: #fef2f2;
+  border-color: rgba(220,38,38,.6);
+  background: #fef2f2;
 }
 .error-text {
-  color: #dc2626;
-  font-size: 0.85rem;
+  color: var(--danger);
+  font-size: .82rem;
   margin-top: 2px;
+}
+
+/* HARD OVERRIDE (jak w Twoim AddTaskModal.css) */
+.modal-overlay .modal-window input.form-input,
+.modal-overlay .modal-window select.form-select {
+  height: 40px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 12px !important;
+  padding-right: 34px !important;
+  line-height: 40px !important;
+  color: var(--ink) !important; /* CZARNE */
+  background: #fff !important;
+}
+
+.modal-overlay .modal-window select.form-select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50% !important;
+  background-size: 6px 6px !important;
+  background-repeat: no-repeat !important;
+  text-indent: 0 !important;
+}
+
+.modal-overlay .modal-window textarea.form-textarea {
+  padding: 9px 12px !important;
+  line-height: 1.35 !important;
+  color: var(--ink) !important;
+}
+
+.modal-overlay .modal-window input.form-input[type="date"] {
+  line-height: normal !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
