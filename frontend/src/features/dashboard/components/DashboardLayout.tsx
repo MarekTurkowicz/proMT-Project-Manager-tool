@@ -29,10 +29,8 @@ export default function DashboardLayout() {
 
       {/* PRAWA KOLUMNA: header + content */}
       <div className="flex flex-col min-w-0 min-h-0">
-        {/* ⬇️ globalny, lekki pasek użytkownika (sticky) */}
         <HeaderBar />
 
-        {/* Główna zawartość stron dashboardu */}
         <main className="p-6 w-full min-h-0 overflow-hidden">
           <Outlet />
         </main>
