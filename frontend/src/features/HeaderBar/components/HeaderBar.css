@@ -54,13 +54,12 @@
 .hb__logout{ color: #b91c1c; }
 .hb__logout:disabled{ opacity: .6; cursor: not-allowed; }
 
-/* link logowania (gdy brak me) */
+/* link logowania */
 .hb__btnLink{
   border: 1px solid #111827; background: #111827; color: #fff;
   border-radius: 10px; padding: 6px 10px; font-weight: 600; text-decoration: none;
 }
 
-/* mobile */
 @media (max-width:640px){
   .hb{ padding: 0 10px; }
   .hb__name{ display: none; }
