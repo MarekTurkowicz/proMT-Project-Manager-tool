@@ -27,7 +27,6 @@ export const usersApi = createApi({
           : [{ type: "User" as const, id: "LIST" }],
     }),
 
-    // GET /api/users/:id/
     getUser: b.query<AppUser, number>({
       query: (id) => ({ url: `/api/users/${id}/`, method: "GET" }),
       providesTags: (_res, _err, id) => [{ type: "User" as const, id }],
