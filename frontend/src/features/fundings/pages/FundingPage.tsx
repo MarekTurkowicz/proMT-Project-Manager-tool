@@ -1,4 +1,4 @@
-// src/features/fundings/pages/FundingsPage.tsx
+import "../pages/FundingPage.css";
 import { useMemo, useState } from "react";
 import {
   useListFundingsQuery,
@@ -25,6 +25,20 @@ import AddFundingModal from "../components/AddFundingModal";
 
 type TypeFilter = "all" | "grant" | "sponsorship" | "donation" | "internal";
 
+const FUNDING_TYPE_LABEL_PL: Record<Exclude<TypeFilter, "all">, string> = {
+  grant: "Grant",
+  sponsorship: "Sponsoring",
+  donation: "Darowizna",
+  internal: "Wewnętrzne",
+};
+
+function fundingTypeLabel(type?: Funding["type"] | null) {
+  if (!type) return "—";
+  return (
+    FUNDING_TYPE_LABEL_PL[type as Exclude<TypeFilter, "all">] ?? String(type)
+  );
+}
+
 export default function FundingsPage() {
   // --- FILTRY / SORT / SEARCH ---
   const [activeType, setActiveType] = useState<TypeFilter>("all");
@@ -45,15 +59,15 @@ export default function FundingsPage() {
   const params = useMemo(
     () => ({
       ordering,
-      search: search.trim() || undefined, // działa, jeśli DRF SearchFilter jest włączony globalnie
+      search: search.trim() || undefined,
     }),
     [ordering, search]
   );
-  // const { data, isLoading, isFetching, error, refetch } =
+
   const { data, isLoading, error, refetch } = useListFundingsQuery(params);
   const items: Funding[] = data?.results ?? [];
 
-  // prosty filtr po typie (po stronie klienta)
+  // filtr po typie (klient)
   const filtered = useMemo(() => {
     if (activeType === "all") return items;
     return items.filter(
@@ -82,13 +96,13 @@ export default function FundingsPage() {
   };
 
   const handleDeleteFunding = async (id: number) => {
-    const ok = window.confirm("Delete this funding?");
+    const ok = window.confirm("Usunąć to finansowanie?");
     if (!ok) return;
     await deleteFunding(id).unwrap();
     refetch();
   };
 
-  // --- TASKS: ADD / EDIT / DELETE (modal dodawania globalny) ---
+  // --- TASKS: ADD / EDIT / DELETE ---
   const [createTask] = useCreateTaskMutation();
   const [openAddTask, setOpenAddTask] = useState(false);
   const [currentFundingId, setCurrentFundingId] = useState<number | null>(null);
@@ -97,57 +111,57 @@ export default function FundingsPage() {
     <div className="tasks-page">
       {/* SIDEBAR */}
       <aside className="tasks-sidebar">
-        <h2>Fundings</h2>
+        <h2>Finansowania</h2>
 
         <div className="filters">
           <button
             className={btn(activeType === "all")}
             onClick={() => setActiveType("all")}
           >
-            All
+            Wszystkie
           </button>
           <button
             className={btn(activeType === "grant")}
             onClick={() => setActiveType("grant")}
           >
-            Grants
+            Granty
           </button>
           <button
             className={btn(activeType === "sponsorship")}
             onClick={() => setActiveType("sponsorship")}
           >
-            Sponsorships
+            Sponsoring
           </button>
           <button
             className={btn(activeType === "donation")}
             onClick={() => setActiveType("donation")}
           >
-            Donations
+            Darowizny
           </button>
           <button
             className={btn(activeType === "internal")}
             onClick={() => setActiveType("internal")}
           >
-            Internal
+            Wewnętrzne
           </button>
         </div>
 
         <div className="sort">
-          <label>Sort</label>
+          <label>Sortowanie</label>
           <select
             value={ordering}
             onChange={(e) => setOrdering(e.target.value as typeof ordering)}
           >
-            <option value="-created_at">Newest</option>
-            <option value="created_at">Oldest</option>
-            <option value="name">Name A→Z</option>
-            <option value="-name">Name Z→A</option>
+            <option value="-created_at">Najnowsze</option>
+            <option value="created_at">Najstarsze</option>
+            <option value="name">Nazwa A→Z</option>
+            <option value="-name">Nazwa Z→A</option>
             <option value="start_date">Start ↑</option>
             <option value="-start_date">Start ↓</option>
-            <option value="end_date">End ↑</option>
-            <option value="-end_date">End ↓</option>
-            <option value="amount_total">Amount ↑</option>
-            <option value="-amount_total">Amount ↓</option>
+            <option value="end_date">Koniec ↑</option>
+            <option value="-end_date">Koniec ↓</option>
+            <option value="amount_total">Kwota ↑</option>
+            <option value="-amount_total">Kwota ↓</option>
           </select>
         </div>
       </aside>
@@ -155,11 +169,11 @@ export default function FundingsPage() {
       {/* MAIN */}
       <main className="tasks-main">
         <header className="tasks-header">
-          <h1>Fundings</h1>
+          <h1>Finansowania</h1>
           <div className="header-actions" style={{ display: "flex", gap: 8 }}>
             <input
               className="form-input"
-              placeholder="Search funding..."
+              placeholder="Wyszukaj finansowanie…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: 300 }}
@@ -168,15 +182,11 @@ export default function FundingsPage() {
               className="btn-primary"
               onClick={() => setOpenAddFunding(true)}
             >
-              Add funding
+              Dodaj finansowanie
             </button>
-            {/* <span className="muted">
-              {isFetching ? "Loading…" : `${data?.count ?? 0} total`}
-            </span> */}
           </div>
         </header>
 
-        {/* przewijany obszar */}
         <div className="tasks-scroll">
           {/* Add Funding */}
           <AddFundingModal
@@ -195,14 +205,13 @@ export default function FundingsPage() {
             />
           )}
 
-          {/* Add Task (scope wymuszony na funding) */}
+          {/* Add Task (scope funding) */}
           <AddTaskModal
             open={openAddTask}
             onClose={() => setOpenAddTask(false)}
             onSubmit={async (payload) => {
               await createTask(payload).unwrap();
               setOpenAddTask(false);
-              // po dodaniu możesz odświeżyć finansowania lub akordeon; zostawiamy lekko
             }}
             defaultScope="funding"
             lockScope
@@ -210,11 +219,11 @@ export default function FundingsPage() {
           />
 
           {isLoading ? (
-            <div className="card centered muted">Loading…</div>
+            <div className="card centered muted">Wczytywanie…</div>
           ) : error ? (
-            <div className="card error">Failed to load fundings.</div>
+            <div className="card error">Nie udało się wczytać finansowań.</div>
           ) : filtered.length === 0 ? (
-            <div className="card centered muted">No fundings.</div>
+            <div className="card centered muted">Brak finansowań.</div>
           ) : (
             <div className="tasks-list">
               {filtered.map((f) => (
@@ -267,7 +276,7 @@ function FundingAccordionItem({
         onClick={() => {
           const willOpen = !open;
           setOpen(willOpen);
-          if (willOpen) setPage(1); // reset paginacji przy otwarciu
+          if (willOpen) setPage(1);
         }}
       >
         <div className="task-info">
@@ -287,7 +296,9 @@ function FundingAccordionItem({
               </span>
             )}
             {funding.type && (
-              <span className="meta-text">• Type: {funding.type}</span>
+              <span className="meta-text">
+                • Typ finansowania: {fundingTypeLabel(funding.type)}
+              </span>
             )}
           </div>
         </div>
@@ -300,7 +311,7 @@ function FundingAccordionItem({
               onEdit();
             }}
           >
-            Edit
+            Edytuj
           </button>
           <button
             className="btn-danger"
@@ -308,14 +319,13 @@ function FundingAccordionItem({
               e.stopPropagation();
               onDelete();
             }}
-            title="Delete funding"
+            title="Usuń finansowanie"
           >
-            Delete
+            Usuń
           </button>
         </div>
       </div>
 
-      {/* Akordeon: lista zadań */}
       {open && (
         <FundingTasksPanel
           fundingId={funding.id}
@@ -332,7 +342,6 @@ function FundingAccordionItem({
 }
 
 function FundingTasksPanel({
-  fundingId,
   page,
   setPage,
   isFetching,
@@ -361,8 +370,8 @@ function FundingTasksPanel({
       <div className="task-top" style={{ justifyContent: "space-between" }}>
         <div className="meta">
           <span className="meta-text">
-            ( {tasks.length}tasks)
-            {isFetching ? " (loading…)" : ""}
+            ({tasks.length} zadań)
+            {isFetching ? " (wczytywanie…)" : ""}
           </span>
         </div>
         <div className="task-actions">
@@ -373,25 +382,17 @@ function FundingTasksPanel({
               onAddTask();
             }}
           >
-            Add task
+            Dodaj zadanie
           </button>
-          <a
-            className="btn"
-            href={`/tasks?funding=${fundingId}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            Open in Tasks
-          </a>
         </div>
       </div>
 
-      {/* przewijany obszar na zadania w akordeonie */}
       <div
         className="tasks-list"
         style={{ marginTop: 10, maxHeight: 360, overflowY: "auto" }}
       >
         {isLoading && tasks.length === 0 && (
-          <div className="card centered muted">Loading tasks…</div>
+          <div className="card centered muted">Wczytywanie zadań…</div>
         )}
 
         {tasks.map((t) => (
@@ -400,10 +401,9 @@ function FundingTasksPanel({
             t={t}
             onEdit={() => setEditing(t)}
             onDelete={async () => {
-              const ok = window.confirm("Delete this task?");
+              const ok = window.confirm("Usunąć to zadanie?");
               if (!ok) return;
               await deleteTask(t.id).unwrap();
-              // po usunięciu wróć na pierwszą stronę (najprościej, żeby UI był spójny)
               setPage(1);
             }}
             deleting={isDeleting}
@@ -411,10 +411,11 @@ function FundingTasksPanel({
         ))}
 
         {!isFetching && tasks.length === 0 && (
-          <div className="card centered muted">No tasks for this funding.</div>
+          <div className="card centered muted">
+            Brak zadań dla tego finansowania.
+          </div>
         )}
 
-        {/* paginacja: prosty "Load more" */}
         {canLoadMore && (
           <div
             style={{ display: "flex", justifyContent: "center", marginTop: 8 }}
@@ -427,13 +428,12 @@ function FundingTasksPanel({
               }}
               disabled={isFetching}
             >
-              {isFetching ? "Loading…" : "Load more"}
+              {isFetching ? "Wczytywanie…" : "Pokaż więcej"}
             </button>
           </div>
         )}
       </div>
 
-      {/* Modal edycji taska */}
       {editing && (
         <EditTaskModal
           open={true}
@@ -442,7 +442,6 @@ function FundingTasksPanel({
           onSubmit={async (id, patch) => {
             await updateTask({ id, patch }).unwrap();
             setEditing(null);
-            // po zapisie wróć na pierwszą stronę, żeby widzieć efekt
             setPage(1);
           }}
         />
@@ -470,12 +469,18 @@ function FundingTaskRow({
       ? "chip--amber"
       : "chip--gray";
 
+  const STATUS_LABEL_PL: Record<"todo" | "doing" | "done", string> = {
+    todo: "DO ZROBIENIA",
+    doing: "W TOKU",
+    done: "ZROBIONE",
+  };
+
   const prio =
     t.priority >= 3
-      ? chip("chip--red", "High")
+      ? chip("chip--red", "Wysoki")
       : t.priority === 2
-      ? chip("chip--amber", "Medium")
-      : chip("chip--sky", "Low");
+      ? chip("chip--amber", "Średni")
+      : chip("chip--sky", "Niski");
 
   return (
     <div className="task-card">
@@ -484,31 +489,31 @@ function FundingTaskRow({
           <h3>{t.title}</h3>
           {t.description && <p className="desc">{t.description}</p>}
           <div className="meta">
-            {chip(statusCls, statusSafe.toUpperCase())}
+            {chip(statusCls, STATUS_LABEL_PL[statusSafe])}
             {prio}
             {t.due_date && (
-              <span className="meta-text">• Due: {t.due_date}</span>
+              <span className="meta-text">• Termin: {t.due_date}</span>
             )}
           </div>
         </div>
         <div className="task-actions">
-          <button className="btn" onClick={onEdit} title="Edit task">
-            Edit
+          <button className="btn" onClick={onEdit} title="Edytuj zadanie">
+            Edytuj
           </button>
           <button
             className="btn-danger"
             onClick={onDelete}
             disabled={deleting}
-            title="Delete task"
+            title="Usuń zadanie"
           >
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? "Usuwanie…" : "Usuń"}
           </button>
           <a
             className="btn"
             href={`/tasks?focus=${t.id}`}
-            title="Open in Tasks"
+            title="Otwórz w Zadaniach"
           >
-            Open
+            Otwórz
           </a>
         </div>
       </div>

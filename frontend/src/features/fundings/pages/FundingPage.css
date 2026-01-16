@@ -1,0 +1,27 @@
+.tasks-page .task-actions a.btn2 {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #172439;
+  transition: 0.15s background, 0.15s color;
+
+  min-width: 130px;
+  white-space: nowrap;
+}
+
+.tasks-page .task-actions a.btn2:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
