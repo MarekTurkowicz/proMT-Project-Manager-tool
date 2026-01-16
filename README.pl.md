@@ -120,13 +120,5 @@ Projekt powstał jako **praca dyplomowa inżynierska**, obejmująca:
 
 ## Autor
 
-**Marek Turkowicz**  
-Wydział Informatyki  
-Politechnika Białostocka  
-2026
-
+**Marek Turkowicz 2026**   
 ---
-
-## Status projektu
-
-Projekt jest **funkcjonalnie kompletny** i stanowi solidną bazę do dalszego rozwoju.
