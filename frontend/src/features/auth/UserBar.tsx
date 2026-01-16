@@ -9,7 +9,6 @@ export default function UserBar() {
       await logout().unwrap();
       window.location.href = "/login";
     } catch {
-      // tu możesz dodać toast
       alert("Logout failed");
     }
   }

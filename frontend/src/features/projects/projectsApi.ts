@@ -32,23 +32,16 @@ export const projectsApi = createApi({
       invalidatesTags: ["Projects"],
     }),
 
-    // NOWE:
     getById: b.query<Project, number>({
-      // co: detail endpoint
-      // po co: prefill formularza edit
-      query: (id) => ({ url: `/api/projects/${id}/` }),
+        query: (id) => ({ url: `/api/projects/${id}/` }),
       providesTags: (_res, _err, id) => [{ type: "Project", id }],
     }),
     update: b.mutation<Project, { id: number; patch: Partial<Project> }>({
-      // co: PATCH bo zmieniamy fragmenty
-      // po co: eleganckie, zgodne z REST
       query: ({ id, patch }) => ({
         url: `/api/projects/${id}/`,
         method: "patch",
         data: patch,
       }),
-      // co: przeterminuj listę i konkretny detail
-      // po co: żeby UI odświeżył dane
       invalidatesTags: (_res, _err, arg) => [
         "Projects",
         { type: "Project", id: arg.id },

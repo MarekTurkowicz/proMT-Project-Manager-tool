@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useCsrfQuery, useLoginMutation, useMeQuery } from "./authApi";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useState } from "react"; // tylko do błędu UX
+import { useState } from "react";
 
 const FAIL_KEY = "login_fail_count";
 const MAX_BACKOFF_MS = 5000;
@@ -89,7 +89,7 @@ export default function LoginPage() {
       >
         <h1 style={{ margin: "0 0 8px", fontSize: 22 }}>Zaloguj się</h1>
         <p style={{ margin: "0 0 16px", color: "#6b7280" }}>
-          Wprowadź dane dostępowe, aby przejść do projektów.
+          Wprowadź dane dostępowe, aby przejść aplikacji.
         </p>
 
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
