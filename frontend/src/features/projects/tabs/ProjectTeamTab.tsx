@@ -208,10 +208,8 @@ export default function ProjectTeamTab() {
   // filters (kafelki)
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
 
-  // drawer: unassigned
   const [unassignedOpen, setUnassignedOpen] = useState(false);
 
-  // hover preview
   const [hoverPreview, setHoverPreview] = useState<HoverPreview>(null);
   const hoverTimerRef = useRef<number | null>(null);
 
@@ -515,7 +513,6 @@ export default function ProjectTeamTab() {
     await quickUpdate(task.id, { assignee_ids: [userId] });
   }
 
-  /* ===== hover preview (3s delay) ===== */
   function computePreviewPos(e: React.MouseEvent) {
     const pad = 14;
     const maxW = 520;
@@ -706,7 +703,6 @@ export default function ProjectTeamTab() {
                       </div>
                     </div>
 
-                    {/* email zostaje w liście (ma sens przy searchu), ale małe i lekkie */}
                     <div className="team-person-email">
                       {p.user.email ?? "—"}
                     </div>
@@ -747,7 +743,6 @@ export default function ProjectTeamTab() {
               )}
             </div>
 
-            {/* USUNIĘTE: email pod imieniem (jak chciałeś) */}
             {selectionMode === "multi" && (
               <div className="team-main-subtitle">Aggregated view</div>
             )}
@@ -758,7 +753,6 @@ export default function ProjectTeamTab() {
             )}
           </div>
 
-          {/* NONE */}
           {selectionMode === "none" && (
             <div className="team-snapshot">
               <div className="team-snap-grid">

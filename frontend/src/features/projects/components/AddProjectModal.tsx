@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   useForm,
   type FieldErrors,
@@ -7,14 +8,15 @@ import {
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ProjectCreate } from "../../types/project";
-import "./ProjectModals.css"; // opcjonalnie: albo użyj tego samego CSS co do Task/Funding (AddTaskModal.css)
+import "./ProjectModals.css";
+
+const emptyToNull = (v?: string) => (!v || v.trim() === "" ? null : v);
 
 const ProjectCreateSchema = z
   .object({
-    name: z.string().trim().min(3, "Name must be at least 3 characters"),
+    name: z.string().trim().min(3, "Nazwa musi mieć min. 3 znaki"),
     description: z.string().optional(),
-    status: z.enum(["new", "active", "closed"]).optional().default("new"),
-    start_date: z.string().optional(), // "YYYY-MM-DD"
+    start_date: z.string().optional(),
     end_date: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -22,7 +24,7 @@ const ProjectCreateSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["end_date"],
-        message: "End date cannot be before start date",
+        message: "Data końcowa nie może być wcześniejsza niż start",
       });
     }
   });
@@ -50,11 +52,17 @@ export default function AddProjectModal({
     defaultValues: {
       name: "",
       description: "",
-      status: "new",
       start_date: "",
       end_date: "",
     },
   });
+
+  const [datesOpen, setDatesOpen] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    setDatesOpen(true);
+  }, [open]);
 
   const closeAndReset = () => {
     reset();
@@ -65,10 +73,11 @@ export default function AddProjectModal({
     const payload: ProjectCreate = {
       name: values.name.trim(),
       description: values.description?.trim() || undefined,
-      status: values.status,
-      start_date: values.start_date ? values.start_date : null,
-      end_date: values.end_date ? values.end_date : null,
+      start_date: emptyToNull(values.start_date),
+      end_date: emptyToNull(values.end_date),
+      // status celowo NIE ustawiamy przy create
     };
+
     await onSubmit(payload);
     closeAndReset();
   };
@@ -78,7 +87,6 @@ export default function AddProjectModal({
       "name",
       "start_date",
       "end_date",
-      "status",
       "description",
     ];
     const first = order.find((k) => errs[k]);
@@ -91,74 +99,97 @@ export default function AddProjectModal({
     <div className="modal-overlay" onClick={closeAndReset}>
       <div className="modal-window" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Add project</h2>
+          <div className="modal-head-left">
+            <h2 className="modal-title">Dodaj projekt</h2>
+            <div className="modal-subtitle">Uzupełnij szczegóły i zapisz</div>
+          </div>
+
           <button
             className="icon-btn"
             onClick={closeAndReset}
-            aria-label="Close"
+            aria-label="Zamknij"
+            type="button"
           >
-            x
+            ✕
           </button>
         </div>
 
         <form className="modal-form" onSubmit={handleSubmit(submit, onInvalid)}>
           <div className="modal-body">
-            <div>
-              <label className="form-label">Name</label>
-              <input
-                className={`form-input ${errors.name ? "input-invalid" : ""}`}
-                aria-invalid={!!errors.name}
-                {...register("name")}
-                placeholder="Project name"
-              />
-              {errors.name && (
-                <p className="error-text">{String(errors.name.message)}</p>
-              )}
-            </div>
+            {/* OGÓLNE */}
+            <div className="card">
+              <div className="section-title">Ogólne</div>
 
-            <div>
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-textarea"
-                rows={3}
-                {...register("description")}
-                placeholder="Optional"
-              />
-            </div>
-
-            <div className="form-grid">
-              <div>
-                <label className="form-label">Status</label>
-                <select className="form-select" {...register("status")}>
-                  <option value="new">New</option>
-                  <option value="active">Active</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Start date</label>
+              <div className="field">
+                <label className="form-label">Nazwa</label>
                 <input
-                  type="date"
-                  className="form-input"
-                  {...register("start_date")}
+                  className={`form-input ${errors.name ? "input-invalid" : ""}`}
+                  aria-invalid={!!errors.name}
+                  {...register("name")}
+                  placeholder="Np. Strona www 2026"
                 />
-              </div>
-              <div>
-                <label className="form-label">End date</label>
-                <input
-                  type="date"
-                  className={`form-input ${
-                    errors.end_date ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.end_date}
-                  {...register("end_date")}
-                />
-                {errors.end_date && (
-                  <p className="error-text">
-                    {String(errors.end_date.message)}
-                  </p>
+                {errors.name && (
+                  <p className="error-text">{String(errors.name.message)}</p>
                 )}
               </div>
+
+              <div className="field">
+                <label className="form-label">Opis</label>
+                <textarea
+                  className="form-textarea textarea-compact"
+                  rows={2}
+                  {...register("description")}
+                  placeholder="Opcjonalnie"
+                />
+              </div>
+            </div>
+
+            {/* DATY (obok siebie) */}
+            <div className="accordion">
+              <button
+                type="button"
+                className="acc-trigger"
+                onClick={() => setDatesOpen((s) => !s)}
+              >
+                <span className="acc-left">
+                  <span className="acc-title">Daty</span>
+                </span>
+                <span className="acc-right" aria-hidden>
+                  {datesOpen ? "−" : "+"}
+                </span>
+              </button>
+
+              {datesOpen && (
+                <div className="acc-body">
+                  <div className="grid-2">
+                    <div className="field">
+                      <label className="form-label">Start</label>
+                      <input
+                        type="date"
+                        className="form-input"
+                        {...register("start_date")}
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label className="form-label">Koniec</label>
+                      <input
+                        type="date"
+                        className={`form-input ${
+                          errors.end_date ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.end_date}
+                        {...register("end_date")}
+                      />
+                      {errors.end_date && (
+                        <p className="error-text">
+                          {String(errors.end_date.message)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -168,14 +199,16 @@ export default function AddProjectModal({
               className="btn-secondary"
               onClick={closeAndReset}
             >
-              Cancel
+              Anuluj
             </button>
+
             <button
               type="submit"
               className="btn-primary"
               disabled={!isValid || isSubmitting}
+              title={!isValid ? "Popraw błędy walidacji" : ""}
             >
-              {isSubmitting ? "Saving…" : "Add project"}
+              {isSubmitting ? "Zapisywanie…" : "Zapisz"}
             </button>
           </div>
         </form>

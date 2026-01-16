@@ -38,7 +38,6 @@
   transition: background 0.2s, color 0.2s;
 }
 
-/* aktywny NavLink — React Router automatycznie dodaje .active */
 .dashboard__link.active {
   color: #111;
   background: #f2f4f7;

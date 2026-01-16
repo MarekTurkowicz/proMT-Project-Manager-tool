@@ -1,5 +1,4 @@
-// src/features/tasks/components/AddTaskModal.tsx
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useForm,
   type FieldErrors,
@@ -20,11 +19,8 @@ export interface AddTaskModalProps {
   onClose: () => void;
   onSubmit: (payload: CreateTaskPayload) => Promise<void> | void;
 
-  /** domyślne ustawienie scope przy otwarciu (na TaskPage nie podawaj — zostanie 'unassigned') */
   defaultScope?: Scope;
-  /** gdy true — ukrywa radia i wymusza scope (np. na Funding/Project detail) */
   lockScope?: boolean;
-  /** automatyczne wypełnienie selecta/ID przy wymuszeniu scope */
   defaultFundingId?: number;
   defaultProjectId?: number;
 }
@@ -41,9 +37,8 @@ export default function AddTaskModal({
   const { data: projectOptions = [], isLoading: lp } = usePickProjectsQuery();
   const { data: fundingOptions = [], isLoading: lf } = usePickFundingsQuery();
 
-  // --- Schema (musi widzieć lockScope) ---
   const BaseTaskCreateSchema = z.object({
-    title: z.string().trim().min(3, "Title must be at least 3 characters"),
+    title: z.string().trim().min(3, "Tytuł musi mieć min. 3 znaki"),
     description: z.string().optional(),
 
     status: z.enum(["todo", "doing", "done"]),
@@ -60,7 +55,7 @@ export default function AddTaskModal({
           v === undefined ||
           v === "" ||
           (!Number.isNaN(parseFloat(v)) && parseFloat(v) >= 0),
-        "Estimated hours must be ≥ 0"
+        "Szacowany czas musi być ≥ 0"
       ),
     cost_amount: z
       .string()
@@ -70,7 +65,7 @@ export default function AddTaskModal({
           v === undefined ||
           v === "" ||
           (!Number.isNaN(parseFloat(v)) && parseFloat(v) >= 0),
-        "Cost amount must be ≥ 0"
+        "Koszt musi być ≥ 0"
       ),
     cost_currency: z.string().optional().default("PLN"),
 
@@ -79,12 +74,12 @@ export default function AddTaskModal({
       .optional()
       .refine(
         (v) => !v || v.trim() === "" || /^https?:\/\/.+/i.test(v),
-        "Invalid URL format"
+        "Niepoprawny adres URL"
       ),
     receipt_note: z.string().optional(),
 
     scope: z.enum(["unassigned", "project", "funding"]),
-    projectId: z.string().optional(), // "" lub "123"
+    projectId: z.string().optional(),
     fundingId: z.string().optional(),
   });
 
@@ -93,11 +88,10 @@ export default function AddTaskModal({
       ctx.addIssue({
         code: "custom",
         path: ["due_date"],
-        message: "End date cannot be before start date",
+        message: "Data końcowa nie może być wcześniejsza niż start",
       });
     }
 
-    // gdy scope jest wymuszony na zewnątrz, nie wymagaj wyboru z selectów
     if (lockScope) return;
 
     if (
@@ -107,7 +101,7 @@ export default function AddTaskModal({
       ctx.addIssue({
         code: "custom",
         path: ["projectId"],
-        message: "Select project",
+        message: "Wybierz projekt",
       });
     }
     if (
@@ -117,14 +111,13 @@ export default function AddTaskModal({
       ctx.addIssue({
         code: "custom",
         path: ["fundingId"],
-        message: "Select funding",
+        message: "Wybierz finansowanie",
       });
     }
   });
 
   type FormValues = z.infer<typeof TaskCreateSchema>;
 
-  // --- RHF ---
   const {
     register,
     handleSubmit,
@@ -153,7 +146,6 @@ export default function AddTaskModal({
     },
   });
 
-  // auto-wstrzyknięcie scope + ID przy każdym otwarciu
   useEffect(() => {
     if (!open) return;
     reset((curr) => ({
@@ -174,6 +166,27 @@ export default function AddTaskModal({
     reset();
     onClose();
   };
+
+  // Accordions
+  const [flowOpen, setFlowOpen] = useState(true);
+  const [costOpen, setCostOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setFlowOpen(true);
+    setCostOpen(false);
+    setReceiptOpen(false);
+    setAssignOpen(false);
+  }, [open]);
+
+  const receiptFilled = useMemo(() => {
+    const url = watch("receipt_url");
+    const note = watch("receipt_note");
+    return !!(url?.trim() || note?.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watch("receipt_url"), watch("receipt_note")]);
 
   const submit = async (values: FormValues) => {
     const payload: CreateTaskPayload = {
@@ -204,7 +217,6 @@ export default function AddTaskModal({
       payload.project_funding = null;
     }
 
-    // nadpisanie, jeśli scope jest zablokowany z góry
     if (lockScope && defaultScope === "funding" && defaultFundingId) {
       payload.project = null;
       payload.funding = defaultFundingId;
@@ -220,19 +232,19 @@ export default function AddTaskModal({
     closeAndReset();
   };
 
-  // Fokus na pierwszym błędzie — bez `any` dzięki Path<FormValues>
   const onInvalid = (errs: FieldErrors<FormValues>) => {
     const order: Path<FormValues>[] = [
       "title",
+      "status",
+      "priority",
       "start_date",
       "due_date",
       "est_hours",
       "cost_amount",
+      "cost_currency",
       "receipt_url",
       "projectId",
       "fundingId",
-      "status",
-      "priority",
     ];
     const first = order.find((k) => errs[k]);
     if (first) setFocus(first);
@@ -244,289 +256,384 @@ export default function AddTaskModal({
     <div className="modal-overlay" onClick={closeAndReset}>
       <div className="modal-window" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Add task</h2>
+          <div className="modal-head-left">
+            <h2 className="modal-title">Dodaj zadanie</h2>
+            <div className="modal-subtitle">Uzupełnij szczegóły i zapisz</div>
+          </div>
+
           <button
             className="icon-btn"
             onClick={closeAndReset}
-            aria-label="Close"
+            aria-label="Zamknij"
+            type="button"
           >
-            x
+            ✕
           </button>
         </div>
 
         <form className="modal-form" onSubmit={handleSubmit(submit, onInvalid)}>
           <div className="modal-body">
-            {/* Title */}
-            <div>
-              <label className="form-label">Title</label>
-              <input
-                className={`form-input ${errors.title ? "input-invalid" : ""}`}
-                aria-invalid={!!errors.title}
-                {...register("title")}
-                placeholder="Task title"
-              />
-              {errors.title && (
-                <p className="error-text">{String(errors.title.message)}</p>
-              )}
-            </div>
+            {/* OGÓLNE */}
+            <div className="card">
+              <div className="section-title">Ogólne</div>
 
-            {/* Description */}
-            <div>
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-textarea"
-                rows={3}
-                {...register("description")}
-                placeholder="Optional"
-              />
-            </div>
-
-            {/* Status / Priority */}
-            <div className="form-grid">
-              <div>
-                <label className="form-label">Status</label>
-                <select
-                  className={`form-select ${
-                    errors.status ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.status}
-                  {...register("status")}
-                >
-                  <option value="todo">To do</option>
-                  <option value="doing">Doing</option>
-                  <option value="done">Done</option>
-                </select>
-                {errors.status && (
-                  <p className="error-text">{String(errors.status.message)}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="form-label">Priority</label>
-                <select
-                  className={`form-select ${
-                    errors.priority ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.priority}
-                  {...register("priority")}
-                >
-                  <option value={1}>Low</option>
-                  <option value={2}>Medium</option>
-                  <option value={3}>High</option>
-                </select>
-                {errors.priority && (
-                  <p className="error-text">
-                    {String(errors.priority.message)}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Dates */}
-            <div className="form-grid">
-              <div>
-                <label className="form-label">Start date</label>
+              <div className="field">
+                <label className="form-label">Tytuł</label>
                 <input
-                  type="date"
                   className={`form-input ${
-                    errors.start_date ? "input-invalid" : ""
+                    errors.title ? "input-invalid" : ""
                   }`}
-                  aria-invalid={!!errors.start_date}
-                  {...register("start_date")}
+                  aria-invalid={!!errors.title}
+                  {...register("title")}
+                  placeholder="Np. Przygotować ofertę"
+                />
+                {errors.title && (
+                  <p className="error-text">{String(errors.title.message)}</p>
+                )}
+              </div>
+
+              <div className="field">
+                <label className="form-label">Opis</label>
+                <textarea
+                  className="form-textarea textarea-compact"
+                  rows={2}
+                  {...register("description")}
+                  placeholder="Opcjonalnie"
                 />
               </div>
-              <div>
-                <label className="form-label">Due date</label>
-                <input
-                  type="date"
-                  className={`form-input ${
-                    errors.due_date ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.due_date}
-                  {...register("due_date")}
-                />
-                {errors.due_date && (
-                  <p className="error-text">
-                    {String(errors.due_date.message)}
-                  </p>
-                )}
-              </div>
             </div>
 
-            {/* Estimates / Cost */}
-            <div className="form-grid">
-              <div>
-                <label className="form-label">Est. hours</label>
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  className={`form-input ${
-                    errors.est_hours ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.est_hours}
-                  {...register("est_hours")}
-                />
-                {errors.est_hours && (
-                  <p className="error-text">
-                    {String(errors.est_hours.message)}
-                  </p>
-                )}
-              </div>
+            {/* PRZEPŁYW ZADAŃ */}
+            <div className="accordion">
+              <button
+                type="button"
+                className="acc-trigger"
+                onClick={() => setFlowOpen((s) => !s)}
+              >
+                <span className="acc-left">
+                  <span className="acc-title">Przepływ zadań</span>
+                </span>
+                <span className="acc-right" aria-hidden>
+                  {flowOpen ? "−" : "+"}
+                </span>
+              </button>
 
-              <div>
-                <label className="form-label">Cost amount</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className={`form-input ${
-                    errors.cost_amount ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.cost_amount}
-                  {...register("cost_amount")}
-                />
-                {errors.cost_amount && (
-                  <p className="error-text">
-                    {String(errors.cost_amount.message)}
-                  </p>
-                )}
-              </div>
+              {flowOpen && (
+                <div className="acc-body">
+                  <div className="grid-4 grid-4--tight">
+                    <div className="field">
+                      <label className="form-label">Status</label>
+                      <select
+                        className={`form-select ${
+                          errors.status ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.status}
+                        {...register("status")}
+                      >
+                        <option value="todo">Do zrobienia</option>
+                        <option value="doing">W trakcie</option>
+                        <option value="done">Zrobione</option>
+                      </select>
+                    </div>
 
-              <div>
-                <label className="form-label">Currency</label>
-                <select className="form-select" {...register("cost_currency")}>
-                  <option value="PLN">PLN</option>
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                </select>
-              </div>
-            </div>
+                    <div className="field">
+                      <label className="form-label">Priorytet</label>
+                      <select
+                        className={`form-select ${
+                          errors.priority ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.priority}
+                        {...register("priority")}
+                      >
+                        <option value={1}>Niski</option>
+                        <option value={2}>Średni</option>
+                        <option value={3}>Wysoki</option>
+                      </select>
+                    </div>
 
-            {/* Receipt */}
-            <div>
-              <label className="form-label">Receipt URL</label>
-              <input
-                type="url"
-                className={`form-input ${
-                  errors.receipt_url ? "input-invalid" : ""
-                }`}
-                aria-invalid={!!errors.receipt_url}
-                {...register("receipt_url")}
-              />
-              {errors.receipt_url && (
-                <p className="error-text">
-                  {String(errors.receipt_url.message)}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="form-label">Receipt note</label>
-              <textarea
-                className="form-textarea"
-                rows={2}
-                {...register("receipt_note")}
-              />
-            </div>
+                    <div className="field">
+                      <label className="form-label">Start</label>
+                      <input
+                        type="date"
+                        className={`form-input ${
+                          errors.start_date ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.start_date}
+                        {...register("start_date")}
+                      />
+                    </div>
 
-            {/* Scope — ukryty przy lockScope */}
-            {!lockScope && (
-              <div>
-                <label className="form-label">Assign to</label>
-                <div className="scope-group">
-                  <label className="scope-item">
-                    <input
-                      type="radio"
-                      value="unassigned"
-                      {...register("scope")}
-                    />
-                    <span>Unassigned</span>
-                  </label>
-                  <label className="scope-item">
-                    <input
-                      type="radio"
-                      value="project"
-                      {...register("scope")}
-                    />
-                    <span>Project</span>
-                  </label>
-                  <label className="scope-item">
-                    <input
-                      type="radio"
-                      value="funding"
-                      {...register("scope")}
-                    />
-                    <span>Funding</span>
-                  </label>
+                    <div className="field">
+                      <label className="form-label">Termin</label>
+                      <input
+                        type="date"
+                        className={`form-input ${
+                          errors.due_date ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.due_date}
+                        {...register("due_date")}
+                      />
+                      {errors.due_date && (
+                        <p className="error-text">
+                          {String(errors.due_date.message)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Project select — tylko gdy scope=project i brak lockScope */}
-            {scope === "project" && !lockScope && (
-              <div>
-                <label className="form-label">Project</label>
-                <select
-                  className={`form-select ${
-                    errors.projectId ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.projectId}
-                  disabled={lp}
-                  {...register("projectId")}
-                  defaultValue=""
+            {/* KOSZTY */}
+            <div className="accordion">
+              <button
+                type="button"
+                className="acc-trigger"
+                onClick={() => setCostOpen((s) => !s)}
+              >
+                <span className="acc-left">
+                  <span className="acc-title">Koszty</span>
+                </span>
+                <span className="acc-right" aria-hidden>
+                  {costOpen ? "−" : "+"}
+                </span>
+              </button>
+
+              {costOpen && (
+                <div className="acc-body">
+                  <div className="grid-3">
+                    <div className="field">
+                      <label className="form-label">Szac. czas (h)</label>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0"
+                        className={`form-input ${
+                          errors.est_hours ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.est_hours}
+                        {...register("est_hours")}
+                        placeholder="0"
+                      />
+                      {errors.est_hours && (
+                        <p className="error-text">
+                          {String(errors.est_hours.message)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="field">
+                      <label className="form-label">Kwota</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className={`form-input ${
+                          errors.cost_amount ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.cost_amount}
+                        {...register("cost_amount")}
+                        placeholder="0.00"
+                      />
+                      {errors.cost_amount && (
+                        <p className="error-text">
+                          {String(errors.cost_amount.message)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="field">
+                      <label className="form-label">Waluta</label>
+                      <select
+                        className="form-select"
+                        {...register("cost_currency")}
+                      >
+                        <option value="PLN">PLN</option>
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ZAŁĄCZNIK / PARAGON */}
+            <div className="accordion">
+              <button
+                type="button"
+                className="acc-trigger"
+                onClick={() => setReceiptOpen((s) => !s)}
+              >
+                <span className="acc-left">
+                  <span className="acc-title">Załącznik / paragon</span>
+                  {receiptFilled && <span className="acc-dot" aria-hidden />}
+                </span>
+                <span className="acc-right" aria-hidden>
+                  {receiptOpen ? "−" : "+"}
+                </span>
+              </button>
+
+              {receiptOpen && (
+                <div className="acc-body">
+                  <div className="grid-1">
+                    <div className="field">
+                      <label className="form-label">Link (URL)</label>
+                      <input
+                        type="url"
+                        className={`form-input ${
+                          errors.receipt_url ? "input-invalid" : ""
+                        }`}
+                        aria-invalid={!!errors.receipt_url}
+                        {...register("receipt_url")}
+                        placeholder="https://…"
+                      />
+                      {errors.receipt_url && (
+                        <p className="error-text">
+                          {String(errors.receipt_url.message)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="field">
+                      <label className="form-label">Notatka</label>
+                      <input
+                        className="form-input"
+                        {...register("receipt_note")}
+                        placeholder="Opcjonalnie"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!lockScope && (
+              <div className="accordion">
+                <button
+                  type="button"
+                  className="acc-trigger"
+                  onClick={() => setAssignOpen((s) => !s)}
                 >
-                  <option value="">Select project…</option>
-                  {projectOptions.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.projectId && (
-                  <p className="error-text">
-                    {String(errors.projectId.message)}
-                  </p>
+                  <span className="acc-left">
+                    <span className="acc-title">Przypisanie</span>
+                  </span>
+                  <span className="acc-right" aria-hidden>
+                    {assignOpen ? "−" : "+"}
+                  </span>
+                </button>
+
+                {assignOpen && (
+                  <div className="acc-body">
+                    <div className="scope-group">
+                      <label
+                        className={`scope-pill ${
+                          scope === "unassigned" ? "on" : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value="unassigned"
+                          {...register("scope")}
+                        />
+                        <span>Nieprzypisane</span>
+                      </label>
+
+                      <label
+                        className={`scope-pill ${
+                          scope === "project" ? "on" : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value="project"
+                          {...register("scope")}
+                        />
+                        <span>Projekt</span>
+                      </label>
+
+                      <label
+                        className={`scope-pill ${
+                          scope === "funding" ? "on" : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value="funding"
+                          {...register("scope")}
+                        />
+                        <span>Finansowanie</span>
+                      </label>
+                    </div>
+
+                    {scope === "project" && (
+                      <div className="field mt-10">
+                        <label className="form-label">Projekt</label>
+                        <select
+                          className={`form-select ${
+                            errors.projectId ? "input-invalid" : ""
+                          }`}
+                          aria-invalid={!!errors.projectId}
+                          disabled={lp}
+                          {...register("projectId")}
+                          defaultValue=""
+                        >
+                          <option value="">Wybierz projekt…</option>
+                          {projectOptions.map((p) => (
+                            <option key={p.id} value={String(p.id)}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.projectId && (
+                          <p className="error-text">
+                            {String(errors.projectId.message)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {scope === "funding" && (
+                      <div className="field mt-10">
+                        <label className="form-label">Finansowanie</label>
+                        <select
+                          className={`form-select ${
+                            errors.fundingId ? "input-invalid" : ""
+                          }`}
+                          aria-invalid={!!errors.fundingId}
+                          disabled={lf}
+                          {...register("fundingId")}
+                          defaultValue=""
+                        >
+                          <option value="">Wybierz finansowanie…</option>
+                          {fundingOptions.map((f) => (
+                            <option key={f.id} value={String(f.id)}>
+                              {f.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.fundingId && (
+                          <p className="error-text">
+                            {String(errors.fundingId.message)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Funding select — tylko gdy scope=funding i brak lockScope */}
-            {scope === "funding" && !lockScope && (
-              <div>
-                <label className="form-label">Funding</label>
-                <select
-                  className={`form-select ${
-                    errors.fundingId ? "input-invalid" : ""
-                  }`}
-                  aria-invalid={!!errors.fundingId}
-                  disabled={lf}
-                  {...register("fundingId")}
-                  defaultValue=""
-                >
-                  <option value="">Select funding…</option>
-                  {fundingOptions.map((f) => (
-                    <option key={f.id} value={String(f.id)}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.fundingId && (
-                  <p className="error-text">
-                    {String(errors.fundingId.message)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Informacja gdy scope zablokowany */}
             {lockScope && defaultScope === "funding" && defaultFundingId && (
-              <div className="muted">
-                This task will be assigned to funding #{defaultFundingId}
+              <div className="callout">
+                Zadanie zostanie przypisane do finansowania{" "}
+                <b>#{defaultFundingId}</b>.
               </div>
             )}
             {lockScope && defaultScope === "project" && defaultProjectId && (
-              <div className="muted">
-                This task will be assigned to project #{defaultProjectId}
+              <div className="callout">
+                Zadanie zostanie przypisane do projektu{" "}
+                <b>#{defaultProjectId}</b>.
               </div>
             )}
           </div>
@@ -537,15 +644,15 @@ export default function AddTaskModal({
               className="btn-secondary"
               onClick={closeAndReset}
             >
-              Cancel
+              Anuluj
             </button>
             <button
               type="submit"
               className="btn-primary"
               disabled={!isValid || isSubmitting}
-              title={!isValid ? "Fix validation errors first" : ""}
+              title={!isValid ? "Popraw błędy walidacji" : ""}
             >
-              {isSubmitting ? "Saving…" : "Add task"}
+              {isSubmitting ? "Zapisywanie…" : "Zapisz"}
             </button>
           </div>
         </form>

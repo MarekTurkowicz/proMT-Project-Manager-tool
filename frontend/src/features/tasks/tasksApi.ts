@@ -25,12 +25,12 @@ export const tasksApi = createApi({
     listTasks: b.query<Paged<Task>, TasksListParams | void>({
       query: (params) => {
         const p = new URLSearchParams();
-        if (params?.project != null) p.set("project", String(params.project));
-        if (params?.funding != null) p.set("funding", String(params.funding));
-        if (params?.unassigned) p.set("unassigned", "true");
-        if (params?.status) p.set("status", params.status);
-        if (params?.ordering) p.set("ordering", params.ordering);
-        if (params?.page) p.set("page", String(params.page));
+        if (params && params.project != null) p.set("project", String(params.project));
+        if (params && params.funding != null) p.set("funding", String(params.funding));
+        if (params && params.unassigned) p.set("unassigned", "true");
+        if (params && params.status) p.set("status", params.status);
+        if (params && params.ordering) p.set("ordering", params.ordering);
+        if (params && params.page) p.set("page", String(params.page));
         const qs = p.toString();
         return { url: `/api/tasks/${qs ? `?${qs}` : ""}`, method: "GET" };
       },

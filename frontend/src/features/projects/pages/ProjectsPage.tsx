@@ -13,6 +13,8 @@ import "../pages/ProjectPage.css";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 
+import { saveLastProject } from "../../types/dashboard"; // dopasuj ścieżkę
+
 type ProjectsOrdering =
   | "-updated_at"
   | "updated_at"
@@ -276,6 +278,7 @@ function ProjectRow({
             className="btn"
             to={`/dashboard/projects/${p.id}/overview`}
             title="Open project"
+            onClick={() => saveLastProject(p)}
           >
             Open project
           </Link>

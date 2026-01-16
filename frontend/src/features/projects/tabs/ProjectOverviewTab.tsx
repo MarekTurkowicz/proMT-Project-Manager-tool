@@ -18,15 +18,15 @@ import {
 import "./ProjectOverviewTab.css";
 
 type DailyActivityPoint = {
-  date: string; // "YYYY-MM-DD"
-  label: string; // np. "04.11"
+  date: string;
+  label: string;
   started: number;
   due: number;
 };
 
 type WeekdayStat = {
-  weekday: number; // 0-6
-  label: string; // "Mon"
+  weekday: number;
+  label: string;
   count: number;
 };
 
@@ -119,24 +119,12 @@ function isOutsideProjectRange(
   if (!start && !end) return false;
 
   let outside = false;
-
-  if (projStart && start && start < projStart) {
-    outside = true;
-  }
-  if (projEnd && end && end > projEnd) {
-    outside = true;
-  }
+  if (projStart && start && start < projStart) outside = true;
+  if (projEnd && end && end > projEnd) outside = true;
 
   return outside;
 }
 
-/**
- * Overdue =
- *  - nie jest done
- *  - ma start_date < dzisiaj (po samej dacie)
- *    LUB
- *  - zakres zadania wychodzi poza zakres projektu
- */
 function isOverdue(
   task: Task,
   todayStart: Date,
@@ -150,7 +138,6 @@ function isOverdue(
     start != null && startOfDay(start).getTime() < todayStart.getTime();
 
   const outside = isOutsideProjectRange(task, projectStart, projectEnd);
-
   return startBeforeToday || outside;
 }
 
@@ -173,7 +160,7 @@ function formatFullDate(value: string | null | undefined): string {
 }
 
 function weekdayLabel(weekday: number): string {
-  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const labels = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "So"];
   return labels[weekday] ?? "";
 }
 
@@ -194,6 +181,10 @@ export default function ProjectOverviewTab() {
   const tasks: Task[] = useMemo(() => data?.results ?? [], [data]);
   const todayStart = useMemo(() => startOfDay(new Date()), []);
   const [chartMode, setChartMode] = useState<ChartMode>("activity");
+
+  const [descExpanded, setDescExpanded] = useState(false);
+  const descriptionText = project.description ?? "";
+  const canToggleDescription = (descriptionText?.trim().length ?? 0) > 160;
 
   const {
     total,
@@ -224,40 +215,34 @@ export default function ProjectOverviewTab() {
     cycleBuckets,
     missingDatesCount,
   }: OverviewStats = useMemo<OverviewStats>(() => {
-    const totalCount: number = tasks.length;
-    const done: number = tasks.filter((t: Task) => isDone(t.status)).length;
-    const doing: number = tasks.filter(
-      (t: Task) => t.status === "doing"
-    ).length;
-    const todo: number = tasks.filter((t: Task) => t.status === "todo").length;
-    const highPriority: number = tasks.filter((t: Task) =>
-      isHighPriority(t.priority)
-    ).length;
+    const totalCount = tasks.length;
+    const done = tasks.filter((t) => isDone(t.status)).length;
+    const doing = tasks.filter((t) => t.status === "doing").length;
+    const todo = tasks.filter((t) => t.status === "todo").length;
 
-    const overdue: number = tasks.filter((t: Task) =>
+    const highPriority = tasks.filter((t) => isHighPriority(t.priority)).length;
+
+    const overdue = tasks.filter((t) =>
       isOverdue(t, todayStart, project.start_date, project.end_date)
     ).length;
 
-    const noStartDate: number = tasks.filter((t: Task) => !t.start_date).length;
-    const noDueDate: number = tasks.filter((t: Task) => !t.due_date).length;
+    const noStartDate = tasks.filter((t) => !t.start_date).length;
+    const noDueDate = tasks.filter((t) => !t.due_date).length;
 
-    const missingDatesCount: number = tasks.filter(
-      (t: Task) => !t.start_date || !t.due_date
+    const missingDatesCountCalc = tasks.filter(
+      (t) => !t.start_date || !t.due_date
     ).length;
 
-    const highPriorityOverdueCount: number = tasks.filter(
-      (t: Task) =>
+    const highPriorityOverdueCountCalc = tasks.filter(
+      (t) =>
         isHighPriority(t.priority) &&
         isOverdue(t, todayStart, project.start_date, project.end_date)
     ).length;
 
-    const completion: number =
-      totalCount === 0 ? 0 : done / Math.max(totalCount, 1);
+    const completion = totalCount === 0 ? 0 : done / Math.max(totalCount, 1);
 
-    // === Daily activity (ostatnie 14 dni) ===
     const daysWindow = 14;
     const dateMap = new Map<string, { started: number; due: number }>();
-
     for (let i = daysWindow - 1; i >= 0; i -= 1) {
       const d = new Date(todayStart);
       d.setDate(todayStart.getDate() - i);
@@ -265,24 +250,19 @@ export default function ProjectOverviewTab() {
       dateMap.set(key, { started: 0, due: 0 });
     }
 
-    tasks.forEach((task: Task) => {
+    tasks.forEach((task) => {
       const start = parseDate(task.start_date);
       const due = parseDate(task.due_date);
 
       if (start) {
         const key = start.toISOString().slice(0, 10);
         const current = dateMap.get(key);
-        if (current) {
-          current.started += 1;
-        }
+        if (current) current.started += 1;
       }
-
       if (due) {
         const key = due.toISOString().slice(0, 10);
         const current = dateMap.get(key);
-        if (current) {
-          current.due += 1;
-        }
+        if (current) current.due += 1;
       }
     });
 
@@ -298,82 +278,66 @@ export default function ProjectOverviewTab() {
         };
       });
 
-    // Momentum trend – porównanie ostatnich 7 dni vs poprzednie 7
+    // Trend momentum (7 vs 7)
     let trend: MomentumTrend = "none";
     if (dailyActivityArr.length >= 14) {
       const last7 = dailyActivityArr.slice(-7);
       const prev7 = dailyActivityArr.slice(-14, -7);
 
-      const sumStartedLast = last7.reduce(
-        (acc: number, p: DailyActivityPoint) => acc + p.started,
-        0
-      );
-      const sumStartedPrev = prev7.reduce(
-        (acc: number, p: DailyActivityPoint) => acc + p.started,
-        0
-      );
+      const sumLast = last7.reduce((acc, p) => acc + p.started, 0);
+      const sumPrev = prev7.reduce((acc, p) => acc + p.started, 0);
 
-      if (sumStartedPrev === 0 && sumStartedLast === 0) {
-        trend = "none";
-      } else if (sumStartedPrev === 0 && sumStartedLast > 0) {
-        trend = "up";
-      } else {
-        const diff = sumStartedLast - sumStartedPrev;
-        const changeRatio = diff / Math.max(sumStartedPrev, 1);
-        if (changeRatio > 0.1) {
-          trend = "up";
-        } else if (changeRatio < -0.1) {
-          trend = "down";
-        } else {
-          trend = "stable";
-        }
+      if (sumPrev === 0 && sumLast === 0) trend = "none";
+      else if (sumPrev === 0 && sumLast > 0) trend = "up";
+      else {
+        const diff = sumLast - sumPrev;
+        const ratio = diff / Math.max(sumPrev, 1);
+        if (ratio > 0.1) trend = "up";
+        else if (ratio < -0.1) trend = "down";
+        else trend = "stable";
       }
     }
 
-    // Rytm tygodnia – na podstawie start_date albo created_at
-    const weekdayCounts: number[] = [0, 0, 0, 0, 0, 0, 0];
-
-    tasks.forEach((task: Task) => {
+    // Statystyki wg dnia tygodnia
+    const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
+    tasks.forEach((task) => {
       const baseDate = parseDate(task.start_date) ?? parseDate(task.created_at);
       if (!baseDate) return;
-      const weekday = baseDate.getDay(); // 0-6
-      weekdayCounts[weekday] += 1;
+      weekdayCounts[baseDate.getDay()] += 1;
     });
 
     const weekdayStatsArr: WeekdayStat[] = weekdayCounts.map(
-      (count: number, weekday: number) => ({
+      (count, weekday) => ({
         weekday,
         label: weekdayLabel(weekday),
         count,
       })
     );
 
-    // Risk index
-    let riskScore = 0;
+    // Wynik ryzyka
+    let riskScoreCalc = 0;
     if (totalCount > 0) {
       const ratioOverdue = overdue / totalCount;
-      const ratioHighOverdue = highPriorityOverdueCount / totalCount;
+      const ratioHighOverdue = highPriorityOverdueCountCalc / totalCount;
       const ratioNoDates =
         (noStartDate + noDueDate) / Math.max(totalCount * 2, 1);
-
-      const rawScore =
+      const raw =
         0.5 * ratioOverdue + 0.3 * ratioHighOverdue + 0.2 * ratioNoDates;
-
-      riskScore = clamp(Math.round(rawScore * 100), 0, 100);
+      riskScoreCalc = clamp(Math.round(raw * 100), 0, 100);
     }
-    const riskLevel = computeRiskLevel(riskScore);
+    const riskLevelCalc = computeRiskLevel(riskScoreCalc);
 
-    // Timeline vs task progress
-    let timeProgressPct = 0;
-    const taskProgressPct = Math.round(completion * 100);
-    let scheduleDeltaPct = 0;
-    let canComputeTimeline = false;
+    // Oś czasu vs postęp
+    let timeProgressPctCalc = 0;
+    const taskProgressPctCalc = Math.round(completion * 100);
+    let scheduleDeltaPctCalc = 0;
+    let canComputeTimelineCalc = false;
 
     const projStart = parseDate(project.start_date);
     const projEnd = parseDate(project.end_date);
 
     if (projStart && projEnd && projEnd.getTime() > projStart.getTime()) {
-      canComputeTimeline = true;
+      canComputeTimelineCalc = true;
       const totalDays = Math.max(daysBetween(projStart, projEnd), 1);
       const clampedToday =
         todayStart.getTime() > projEnd.getTime()
@@ -386,44 +350,40 @@ export default function ProjectOverviewTab() {
         0,
         totalDays
       );
-      const timeProgress = elapsedDays / totalDays;
-      timeProgressPct = Math.round(timeProgress * 100);
-      scheduleDeltaPct = taskProgressPct - timeProgressPct;
+      timeProgressPctCalc = Math.round((elapsedDays / totalDays) * 100);
+      scheduleDeltaPctCalc = taskProgressPctCalc - timeProgressPctCalc;
     }
 
-    // Predykcja zakończenia – na podstawie velocity (done / dni)
-    let predictedDaysRemaining: number | null = null;
-    let predictedCompletionDate: Date | null = null;
+    // Prognoza
+    let predictedDaysRemainingCalc: number | null = null;
+    let predictedCompletionDateCalc: Date | null = null;
 
     if (done > 0 && totalCount > 0) {
-      const doneTasks: Task[] = tasks.filter((t: Task) => isDone(t.status));
-
+      const doneTasks = tasks.filter((t) => isDone(t.status));
       let firstStart: Date | null = null;
-      doneTasks.forEach((t: Task) => {
+
+      doneTasks.forEach((t) => {
         const baseDate = parseDate(t.start_date) ?? parseDate(t.created_at);
         if (!baseDate) return;
-        if (!firstStart || baseDate < firstStart) {
-          firstStart = baseDate;
-        }
+        if (!firstStart || baseDate < firstStart) firstStart = baseDate;
       });
 
       if (firstStart) {
         const daysSpan = Math.max(daysBetween(firstStart, todayStart), 1);
-        const velocity = done / daysSpan; // done per day
+        const velocity = done / daysSpan;
         const remaining = totalCount - done;
         if (velocity > 0 && remaining > 0) {
           const estDays = Math.round(remaining / velocity);
-          predictedDaysRemaining = estDays;
+          predictedDaysRemainingCalc = estDays;
           const estDate = new Date(todayStart);
           estDate.setDate(todayStart.getDate() + estDays);
-          predictedCompletionDate = estDate;
+          predictedCompletionDateCalc = estDate;
         }
       }
     }
 
-    // Delivery performance – duration = start_date -> due_date (tylko jeśli oba są)
     const cycleDurations: number[] = [];
-    tasks.forEach((task: Task) => {
+    tasks.forEach((task) => {
       if (!task.start_date || !task.due_date) return;
       const start = parseDate(task.start_date);
       const end = parseDate(task.due_date);
@@ -433,10 +393,11 @@ export default function ProjectOverviewTab() {
       cycleDurations.push(diffDays);
     });
 
-    let avgCycleTime: number | null = null;
-    let medianCycleTime: number | null = null;
-    let maxCycleTime: number | null = null;
-    const cycleBuckets: CycleBucket[] = [
+    let avgCycleTimeCalc: number | null = null;
+    let medianCycleTimeCalc: number | null = null;
+    let maxCycleTimeCalc: number | null = null;
+
+    const cycleBucketsCalc: CycleBucket[] = [
       { label: "0–1d", count: 0 },
       { label: "2–3d", count: 0 },
       { label: "4–7d", count: 0 },
@@ -444,41 +405,33 @@ export default function ProjectOverviewTab() {
     ];
 
     if (cycleDurations.length > 0) {
-      const sum = cycleDurations.reduce((acc: number, d: number) => acc + d, 0);
-      avgCycleTime = sum / cycleDurations.length;
+      const sum = cycleDurations.reduce((acc, d) => acc + d, 0);
+      avgCycleTimeCalc = sum / cycleDurations.length;
 
-      const sortedDurations = [...cycleDurations].sort(
-        (a: number, b: number) => a - b
-      );
-      const mid = Math.floor(sortedDurations.length / 2);
-      if (sortedDurations.length % 2 === 0) {
-        medianCycleTime = (sortedDurations[mid - 1] + sortedDurations[mid]) / 2;
-      } else {
-        medianCycleTime = sortedDurations[mid];
-      }
+      const sorted = [...cycleDurations].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      medianCycleTimeCalc =
+        sorted.length % 2 === 0
+          ? (sorted[mid - 1] + sorted[mid]) / 2
+          : sorted[mid];
 
-      maxCycleTime = sortedDurations[sortedDurations.length - 1];
+      maxCycleTimeCalc = sorted[sorted.length - 1];
 
-      cycleDurations.forEach((d: number) => {
-        if (d <= 1) {
-          cycleBuckets[0].count += 1;
-        } else if (d <= 3) {
-          cycleBuckets[1].count += 1;
-        } else if (d <= 7) {
-          cycleBuckets[2].count += 1;
-        } else {
-          cycleBuckets[3].count += 1;
-        }
+      cycleDurations.forEach((d) => {
+        if (d <= 1) cycleBucketsCalc[0].count += 1;
+        else if (d <= 3) cycleBucketsCalc[1].count += 1;
+        else if (d <= 7) cycleBucketsCalc[2].count += 1;
+        else cycleBucketsCalc[3].count += 1;
       });
     }
 
-    // Recent activity – ostatnie 5 zadań
-    const recentSorted = [...tasks].sort((a: Task, b: Task) => {
+    const recentSorted = [...tasks].sort((a, b) => {
       const aTime = parseDate(a.created_at)?.getTime() ?? 0;
       const bTime = parseDate(b.created_at)?.getTime() ?? 0;
       return bTime - aTime;
     });
-    const recentTasks: Task[] = recentSorted.slice(0, 4);
+
+    const recentTasksCalc = recentSorted.slice(0, 4);
 
     return {
       total: totalCount,
@@ -489,52 +442,34 @@ export default function ProjectOverviewTab() {
       overdueCount: overdue,
       noStartDateCount: noStartDate,
       noDueDateCount: noDueDate,
-      highPriorityOverdueCount,
+      highPriorityOverdueCount: highPriorityOverdueCountCalc,
       completionRate: completion,
       dailyActivity: dailyActivityArr,
       momentumTrend: trend,
       weekdayStats: weekdayStatsArr,
-      riskScore,
-      riskLevel,
-      timeProgressPct,
-      taskProgressPct,
-      scheduleDeltaPct,
-      canComputeTimeline,
-      predictedDaysRemaining,
-      predictedCompletionDate,
-      recentTasks,
-      avgCycleTime,
-      medianCycleTime,
-      maxCycleTime,
-      cycleBuckets,
-      missingDatesCount,
+      riskScore: riskScoreCalc,
+      riskLevel: riskLevelCalc,
+      timeProgressPct: timeProgressPctCalc,
+      taskProgressPct: taskProgressPctCalc,
+      scheduleDeltaPct: scheduleDeltaPctCalc,
+      canComputeTimeline: canComputeTimelineCalc,
+      predictedDaysRemaining: predictedDaysRemainingCalc,
+      predictedCompletionDate: predictedCompletionDateCalc,
+      recentTasks: recentTasksCalc,
+      avgCycleTime: avgCycleTimeCalc,
+      medianCycleTime: medianCycleTimeCalc,
+      maxCycleTime: maxCycleTimeCalc,
+      cycleBuckets: cycleBucketsCalc,
+      missingDatesCount: missingDatesCountCalc,
     };
   }, [tasks, todayStart, project.start_date, project.end_date]);
 
-  // === Work distribution (todo / doing / done) ===
   const statusTotal = todoCount + doingCount + doneCount;
-
   const todoPct = statusTotal ? Math.round((todoCount / statusTotal) * 100) : 0;
   const doingPct = statusTotal
     ? Math.round((doingCount / statusTotal) * 100)
     : 0;
   const donePct = statusTotal ? Math.max(0, 100 - todoPct - doingPct) : 0;
-
-  let workloadHint = "";
-  if (statusTotal === 0) {
-    workloadHint = "No tasks yet – create the first one to see the flow.";
-  } else if (doingCount > todoCount && doingCount > doneCount) {
-    workloadHint =
-      "Most work is currently in progress – keep an eye on flow & blockers.";
-  } else if (todoCount > doingCount && todoCount > doneCount) {
-    workloadHint =
-      "Backlog is the largest bucket – consider prioritising and starting key items.";
-  } else if (doneCount > todoCount && doneCount > doingCount) {
-    workloadHint =
-      "Largest part of work is already done – you’re approaching the finish line.";
-  } else {
-    workloadHint = "Work is fairly evenly spread between states.";
-  }
 
   const moodEmoji =
     riskLevel === "healthy" ? "🟢" : riskLevel === "warning" ? "🟡" : "🔴";
@@ -548,104 +483,137 @@ export default function ProjectOverviewTab() {
       ? "Momentum stabilne"
       : "Za mało danych";
 
-  const hasFunding =
-    Array.isArray(project.funding_ids) && project.funding_ids.length > 0;
-
   const hasCycleData =
     avgCycleTime !== null &&
     medianCycleTime !== null &&
     maxCycleTime !== null &&
-    cycleBuckets.some((b: CycleBucket) => b.count > 0);
+    cycleBuckets.some((b) => b.count > 0);
 
   const planningRiskPct =
     total === 0 ? 0 : Math.round((missingDatesCount / total) * 100);
-
   const wipLoadPct = total === 0 ? 0 : Math.round((doingCount / total) * 100);
-
   const highPrioSharePct =
     total === 0 ? 0 : Math.round((highPriorityCount / total) * 100);
 
   const riskMessage =
     riskLevel === "healthy"
-      ? "Mostly under control – keep an eye on overdue tasks and missing dates."
+      ? "W większości pod kontrolą – obserwuj przeterminowane zadania i brakujące daty."
       : riskLevel === "warning"
-      ? "Noticeable issues – focus on overdue and high priority tasks first."
-      : "High risk – many overdue or poorly defined tasks, project needs attention.";
+      ? "Są zauważalne problemy – skup się na przeterminowanych i wysokopriorytetowych zadaniach."
+      : "Wysokie ryzyko – dużo przeterminowanych lub słabo zdefiniowanych zadań; projekt wymaga uwagi.";
+
+  const workloadHint =
+    statusTotal === 0
+      ? "Brak zadań – dodaj pierwsze, aby zobaczyć przepływ pracy."
+      : doingCount > todoCount && doingCount > doneCount
+      ? "Dużo w toku – zwróć uwagę na blokery i przepływ."
+      : todoCount > doingCount && todoCount > doneCount
+      ? "Backlog dominuje – rozważ priorytety i start kluczowych zadań."
+      : doneCount > todoCount && doneCount > doingCount
+      ? "Duża część gotowa – jesteś blisko końca."
+      : "Praca dość równomiernie rozłożona.";
+
+  const riskInlineNote = `${riskMessage} • ${workloadHint}`;
+
+  const hasTimelineInfo =
+    canComputeTimeline ||
+    (predictedDaysRemaining != null && predictedCompletionDate);
 
   return (
     <div className="pov-root">
       {/* HEADER */}
       <div className="card pov-header">
-        <div className="pov-header-top">
-          <div>
+        <div className="pov-header-row">
+          <div className="pov-head-main">
             <div className="pov-status-row">
               <span className={`pov-status-pill pov-status-${project.status}`}>
                 {project.status}
               </span>
-              <span className="pov-funding-pill">
-                {hasFunding ? "Funding linked" : "No funding linked yet"}
+            </div>
+
+            <div className="pov-head-text">
+              <h2 className="pov-title">{project.name}</h2>
+
+              {project.description && (
+                <div className="pov-description-wrap">
+                  <p
+                    className={
+                      "pov-description" +
+                      (descExpanded ? " is-expanded" : " is-collapsed")
+                    }
+                    title={!descExpanded ? project.description : undefined}
+                  >
+                    {project.description}
+                  </p>
+
+                  {canToggleDescription && (
+                    <button
+                      type="button"
+                      className="pov-desc-toggle"
+                      onClick={() => setDescExpanded((v) => !v)}
+                    >
+                      {descExpanded ? "Zwiń" : "Pokaż więcej"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pov-header-meta">
+            <div className="pov-meta-item">
+              <span className="pov-meta-label">Start</span>
+              <span className="pov-meta-value">
+                {formatFullDate(project.start_date)}
               </span>
             </div>
-            <h2 className="pov-title">{project.name}</h2>
+            <div className="pov-meta-item">
+              <span className="pov-meta-label">Koniec</span>
+              <span className="pov-meta-value">
+                {formatFullDate(project.end_date)}
+              </span>
+            </div>
+            <div className="pov-meta-item">
+              <span className="pov-meta-label">Postęp</span>
+              <span className="pov-meta-value">
+                {Math.round(completionRate * 100)}%
+              </span>
+            </div>
+            <div className="pov-meta-item">
+              <span className="pov-meta-label">Zadania</span>
+              <span className="pov-meta-value">{total}</span>
+            </div>
           </div>
+
           <div className={`pov-mood-badge pov-mood-${riskLevel}`}>
             <span className="pov-mood-emoji">{moodEmoji}</span>
             <span className="pov-mood-label">
               {riskLevel === "healthy"
-                ? "Healthy"
+                ? "Zdrowo"
                 : riskLevel === "warning"
-                ? "Warning"
-                : "Critical"}
+                ? "Uwaga"
+                : "Krytycznie"}
             </span>
             <span className="pov-mood-score">{riskScore}/100</span>
-          </div>
-        </div>
-
-        {project.description && (
-          <p className="pov-description">{project.description}</p>
-        )}
-
-        <div className="pov-header-meta">
-          <div className="pov-meta-item">
-            <span className="pov-meta-label">Start</span>
-            <span className="pov-meta-value">
-              {formatFullDate(project.start_date)}
-            </span>
-          </div>
-          <div className="pov-meta-item">
-            <span className="pov-meta-label">End</span>
-            <span className="pov-meta-value">
-              {formatFullDate(project.end_date)}
-            </span>
-          </div>
-          <div className="pov-meta-item">
-            <span className="pov-meta-label">Progress</span>
-            <span className="pov-meta-value">
-              {Math.round(completionRate * 100)}%
-            </span>
-          </div>
-          <div className="pov-meta-item">
-            <span className="pov-meta-label">Tasks</span>
-            <span className="pov-meta-value">{total}</span>
           </div>
         </div>
       </div>
 
       <div className="pov-layout">
-        {/* MAIN COLUMN */}
-        <div className="pov-main">
+        <div className="pov-col pov-col-main">
           {/* WORK DISTRIBUTION */}
-          <div className="card pov-section">
+          <div className="card pov-section pov-area-dist">
             <div className="pov-section-header">
-              <h3>Work distribution</h3>
+              <h3>Rozkład pracy</h3>
               <span className="pov-section-subtitle">
-                How work is split across todo / doing / done
+                Jak praca dzieli się na: do zrobienia / w trakcie / zrobione
               </span>
             </div>
 
             {statusTotal === 0 ? (
               <div className="pov-chart-empty">
-                No tasks yet – create at least one task to see the workflow.
+                Brak zadań – dodaj co najmniej jedno, aby zobaczyć przepływ
+                pracy.
               </div>
             ) : (
               <>
@@ -655,7 +623,9 @@ export default function ProjectOverviewTab() {
                       className="pov-dist-seg pov-dist-seg-todo"
                       style={{ width: `${todoPct}%` }}
                     >
-                      <span className="pov-dist-label">To do {todoPct}%</span>
+                      <span className="pov-dist-label">
+                        Do zrobienia {todoPct}%
+                      </span>
                     </div>
                   )}
                   {doingPct > 0 && (
@@ -663,7 +633,9 @@ export default function ProjectOverviewTab() {
                       className="pov-dist-seg pov-dist-seg-doing"
                       style={{ width: `${doingPct}%` }}
                     >
-                      <span className="pov-dist-label">Doing {doingPct}%</span>
+                      <span className="pov-dist-label">
+                        W trakcie {doingPct}%
+                      </span>
                     </div>
                   )}
                   {donePct > 0 && (
@@ -671,45 +643,96 @@ export default function ProjectOverviewTab() {
                       className="pov-dist-seg pov-dist-seg-done"
                       style={{ width: `${donePct}%` }}
                     >
-                      <span className="pov-dist-label">Done {donePct}%</span>
+                      <span className="pov-dist-label">
+                        Zrobione {donePct}%
+                      </span>
                     </div>
                   )}
                 </div>
 
-                <div className="pov-dist-stats">
-                  <div className="pov-dist-stat-row">
-                    <span>Total tasks</span>
-                    <span className="pov-dist-stat-value">{total}</span>
-                  </div>
-                  <div className="pov-dist-stat-row">
-                    <span>Completed</span>
-                    <span className="pov-dist-stat-value">
-                      {doneCount} ({Math.round(completionRate * 100)}%)
-                    </span>
-                  </div>
-                  <div className="pov-dist-stat-row">
-                    <span>High priority</span>
-                    <span className="pov-dist-stat-value">
-                      {highPriorityCount}
-                    </span>
-                  </div>
-                  <div className="pov-dist-stat-row">
-                    <span>Overdue / out of range</span>
-                    <span className="pov-dist-stat-value">{overdueCount}</span>
-                  </div>
-                </div>
+                <div className="pov-merged-health pov-merged-health-compact">
+                  <div className="pov-progress-bars">
+                    <div className="pov-progress-row">
+                      <div className="pov-progress-label">
+                        <span>Postęp zadań</span>
+                        <span className="pov-progress-value">
+                          {taskProgressPct}%
+                        </span>
+                      </div>
+                      <div className="pov-progress-track">
+                        <div
+                          className="pov-progress-fill pov-progress-fill-tasks"
+                          style={{
+                            width: `${clamp(taskProgressPct, 0, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
 
-                <div className="pov-dist-hint">{workloadHint}</div>
+                    {canComputeTimeline && (
+                      <div className="pov-progress-row">
+                        <div className="pov-progress-label">
+                          <span>Upływ czasu</span>
+                          <span className="pov-progress-value">
+                            {timeProgressPct}%
+                          </span>
+                        </div>
+                        <div className="pov-progress-track">
+                          <div
+                            className="pov-progress-fill pov-progress-fill-time"
+                            style={{
+                              width: `${clamp(timeProgressPct, 0, 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {hasTimelineInfo && (
+                    <div className="pov-health-summary pov-health-summary-compact">
+                      {canComputeTimeline ? (
+                        scheduleDeltaPct >= 5 ? (
+                          <div className="pov-health-line">
+                            ✅ <strong>{scheduleDeltaPct}%</strong> do przodu.
+                          </div>
+                        ) : scheduleDeltaPct <= -5 ? (
+                          <div className="pov-health-line">
+                            ⚠️ <strong>{Math.abs(scheduleDeltaPct)}%</strong> za
+                            planem.
+                          </div>
+                        ) : (
+                          <div className="pov-health-line">
+                            ℹ️ Mniej więcej zgodnie z planem.
+                          </div>
+                        )
+                      ) : (
+                        <div className="pov-health-line">
+                          ℹ️ Ustaw start i koniec, aby porównać.
+                        </div>
+                      )}
+
+                      {predictedDaysRemaining != null &&
+                        predictedCompletionDate && (
+                          <div className="pov-health-line">
+                            📅 Tempo sugeruje koniec za{" "}
+                            <strong>{predictedDaysRemaining} dni</strong> (
+                            {predictedCompletionDate.toLocaleDateString()}).
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
 
-          {/* FLOW & PERFORMANCE TABS */}
-          <div className="card pov-section">
+          {/* FLOW & PERFORMANCE */}
+          <div className="card pov-section pov-area-flow">
             <div className="pov-section-header">
-              <h3>Flow & performance</h3>
+              <h3>Przepływ i wydajność</h3>
               <span className="pov-section-subtitle">
-                Tempo pracy, rytm tygodnia i czas dostarczania
+                Tempo pracy, rytm tygodnia i szybkość dostarczania
               </span>
             </div>
 
@@ -722,7 +745,7 @@ export default function ProjectOverviewTab() {
                 }
                 onClick={() => setChartMode("activity")}
               >
-                Daily activity
+                Aktywność dzienna
               </button>
               <button
                 type="button"
@@ -731,7 +754,7 @@ export default function ProjectOverviewTab() {
                 }
                 onClick={() => setChartMode("weekly")}
               >
-                Weekly rhythm
+                Rytm tygodnia
               </button>
               <button
                 type="button"
@@ -741,7 +764,7 @@ export default function ProjectOverviewTab() {
                 }
                 onClick={() => setChartMode("delivery")}
               >
-                Delivery performance
+                Skuteczność dostarczania
               </button>
             </div>
 
@@ -749,15 +772,15 @@ export default function ProjectOverviewTab() {
               {chartMode === "activity" && (
                 <>
                   <div className="pov-chart-title">
-                    Daily activity (last 14 days)
+                    Aktywność dzienna (ostatnie 14 dni)
                   </div>
                   {dailyActivity.length === 0 ? (
                     <div className="pov-chart-empty">
-                      No timeline data yet – set dates or add tasks.
+                      Brak danych osi czasu.
                     </div>
                   ) : (
                     <div className="pov-chart-inner">
-                      <ResponsiveContainer width="100%" height={220}>
+                      <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={dailyActivity}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="label" />
@@ -766,13 +789,13 @@ export default function ProjectOverviewTab() {
                           <Line
                             type="monotone"
                             dataKey="started"
-                            name="Started"
+                            name="Rozpoczęte"
                             dot={false}
                           />
                           <Line
                             type="monotone"
                             dataKey="due"
-                            name="Due"
+                            name="Z terminem"
                             dot={false}
                           />
                         </LineChart>
@@ -785,43 +808,42 @@ export default function ProjectOverviewTab() {
 
               {chartMode === "weekly" && (
                 <>
-                  <div className="pov-chart-title">Weekly rhythm</div>
-                  {weekdayStats.every((w: WeekdayStat) => w.count === 0) ? (
-                    <div className="pov-chart-empty">
-                      No activity yet – add some tasks.
-                    </div>
+                  <div className="pov-chart-title">Rytm tygodnia</div>
+                  {weekdayStats.every((w) => w.count === 0) ? (
+                    <div className="pov-chart-empty">Brak aktywności.</div>
                   ) : (
                     <div className="pov-chart-inner">
-                      <ResponsiveContainer width="100%" height={220}>
+                      <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={weekdayStats}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="label" />
                           <YAxis allowDecimals={false} />
                           <Tooltip />
-                          <Bar dataKey="count" name="Tasks" />
+                          <Bar dataKey="count" name="Zadania" />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   )}
                   <div className="pov-chart-footer">
-                    Visual rhythm of when work happens.
+                    Wizualizacja tego, kiedy zwykle dzieje się praca.
                   </div>
                 </>
               )}
 
               {chartMode === "delivery" && (
                 <>
-                  <div className="pov-chart-title">Delivery performance</div>
+                  <div className="pov-chart-title">
+                    Skuteczność dostarczania
+                  </div>
                   {!hasCycleData ? (
                     <div className="pov-chart-empty">
-                      Not enough tasks with both start &amp; due dates to
-                      calculate durations.
+                      Za mało zadań z uzupełnioną datą startu i terminu.
                     </div>
                   ) : (
                     <>
                       <div className="pov-delivery-stats">
                         <div className="pov-delivery-stat">
-                          <div className="pov-delivery-label">Average</div>
+                          <div className="pov-delivery-label">Średnia</div>
                           <div className="pov-delivery-value">
                             {avgCycleTime !== null
                               ? avgCycleTime.toFixed(1)
@@ -830,7 +852,7 @@ export default function ProjectOverviewTab() {
                           </div>
                         </div>
                         <div className="pov-delivery-stat">
-                          <div className="pov-delivery-label">Median</div>
+                          <div className="pov-delivery-label">Mediana</div>
                           <div className="pov-delivery-value">
                             {medianCycleTime !== null
                               ? medianCycleTime.toFixed(1)
@@ -839,7 +861,7 @@ export default function ProjectOverviewTab() {
                           </div>
                         </div>
                         <div className="pov-delivery-stat">
-                          <div className="pov-delivery-label">Longest</div>
+                          <div className="pov-delivery-label">Maks</div>
                           <div className="pov-delivery-value">
                             {maxCycleTime !== null
                               ? maxCycleTime.toFixed(1)
@@ -849,21 +871,20 @@ export default function ProjectOverviewTab() {
                         </div>
                       </div>
 
-                      <div className="pov-chart-inner pov-delivery-chart">
-                        <ResponsiveContainer width="100%" height={220}>
+                      <div className="pov-chart-inner">
+                        <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={cycleBuckets}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="label" />
                             <YAxis allowDecimals={false} />
                             <Tooltip />
-                            <Bar dataKey="count" name="Tasks" />
+                            <Bar dataKey="count" name="Zadania" />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
 
                       <div className="pov-delivery-hint">
-                        Based on tasks with both start and due dates – shorter
-                        cycle times mean quicker delivery.
+                        Na podstawie zadań z uzupełnioną datą startu i terminu.
                       </div>
                     </>
                   )}
@@ -873,152 +894,69 @@ export default function ProjectOverviewTab() {
           </div>
         </div>
 
-        {/* SIDEBAR */}
-        <div className="pov-side">
+        <div className="pov-col pov-col-side">
           {/* RISK RADAR */}
-          <div className="card pov-section">
+          <div className="card pov-section pov-area-risk">
             <div className="pov-section-header">
-              <h3>Risk radar</h3>
+              <h3>Radar ryzyka</h3>
               <span className="pov-section-subtitle">
                 Najważniejsze czerwone flagi
               </span>
             </div>
 
             <div className="pov-risk-columns">
-              {/* lewa kolumna */}
               <ul className="pov-risk-list">
                 <li>
-                  🕓 <strong>{overdueCount}</strong> overdue / out of range
-                  tasks
+                  🕓 <strong>{overdueCount}</strong> zadań przeterminowanych
                 </li>
                 <li>
-                  ⚡ <strong>{highPriorityOverdueCount}</strong> high priority
-                  overdue
+                  ⚡ <strong>{highPriorityOverdueCount}</strong>{" "}
+                  przeterminowanych o wysokim priorytecie
                 </li>
                 <li>
-                  📅 <strong>{noStartDateCount}</strong> tasks without start
-                  date
+                  📅 <strong>{noStartDateCount}</strong> zadań bez daty startu
                 </li>
                 <li>
-                  📅 <strong>{noDueDateCount}</strong> tasks without due date
+                  📅 <strong>{noDueDateCount}</strong> zadań bez terminu
                 </li>
               </ul>
 
-              {/* prawa kolumna */}
               <ul className="pov-risk-list pov-risk-list-secondary">
                 <li>
-                  🧩 <strong>{planningRiskPct}%</strong> tasks with missing
-                  start or due dates ({missingDatesCount})
+                  🧩 <strong>{planningRiskPct}%</strong> brakujących dat (
+                  {missingDatesCount})
                 </li>
                 <li>
-                  🔁 <strong>{wipLoadPct}%</strong> of tasks currently in
-                  progress ({doingCount})
+                  🔁 <strong>{wipLoadPct}%</strong> w trakcie ({doingCount})
                 </li>
                 <li>
-                  ⚡ <strong>{highPrioSharePct}%</strong> of tasks are high
-                  priority ({highPriorityCount})
+                  ⚡ <strong>{highPrioSharePct}%</strong> wysoki priorytet (
+                  {highPriorityCount})
                 </li>
               </ul>
             </div>
 
-            <div className="pov-risk-index">
-              <span>Project risk index</span>
-              <span className="pov-risk-index-value">{riskScore}/100</span>
-            </div>
-
-            <div className="pov-risk-message">{riskMessage}</div>
-          </div>
-
-          {/* HEALTH & TIMELINE */}
-          <div className="card pov-section">
-            <div className="pov-section-header">
-              <h3>Health & timeline</h3>
-              <span className="pov-section-subtitle">
-                Czy projekt nadąża za planem?
-              </span>
-            </div>
-
-            <div className="pov-progress-bars">
-              <div className="pov-progress-row">
-                <div className="pov-progress-label">
-                  <span>Task progress</span>
-                  <span className="pov-progress-value">{taskProgressPct}%</span>
-                </div>
-                <div className="pov-progress-track">
-                  <div
-                    className="pov-progress-fill pov-progress-fill-tasks"
-                    style={{ width: `${clamp(taskProgressPct, 0, 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              {canComputeTimeline && (
-                <div className="pov-progress-row">
-                  <div className="pov-progress-label">
-                    <span>Time elapsed</span>
-                    <span className="pov-progress-value">
-                      {timeProgressPct}%
-                    </span>
-                  </div>
-                  <div className="pov-progress-track">
-                    <div
-                      className="pov-progress-fill pov-progress-fill-time"
-                      style={{ width: `${clamp(timeProgressPct, 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="pov-health-summary">
-              {canComputeTimeline ? (
-                scheduleDeltaPct >= 5 ? (
-                  <span>
-                    ✅ Project is <strong>{scheduleDeltaPct}%</strong> ahead of
-                    time.
-                  </span>
-                ) : scheduleDeltaPct <= -5 ? (
-                  <span>
-                    ⚠️ Project is <strong>{Math.abs(scheduleDeltaPct)}%</strong>{" "}
-                    behind schedule.
-                  </span>
-                ) : (
-                  <span>ℹ️ Project is roughly on schedule.</span>
-                )
-              ) : (
-                <span>
-                  ℹ️ Set both start and end date to compare time vs progress.
-                </span>
-              )}
-
-              {predictedDaysRemaining != null && predictedCompletionDate && (
-                <span>
-                  📅 If you keep this pace, project will finish in{" "}
-                  <strong>{predictedDaysRemaining} days</strong> (
-                  {predictedCompletionDate.toLocaleDateString()}).
-                </span>
-              )}
+            <div className="pov-risk-inline" title={riskInlineNote}>
+              {riskInlineNote}
             </div>
           </div>
 
           {/* ACTIVITY FEED */}
-          <div className="card pov-section">
+          <div className="card pov-section pov-area-feed">
             <div className="pov-section-header">
-              <h3>Activity feed</h3>
+              <h3>Aktywność</h3>
               <span className="pov-section-subtitle">
                 Ostatnie ruchy w projekcie
               </span>
             </div>
 
             {isLoading ? (
-              <div className="pov-feed-empty">Loading activity…</div>
+              <div className="pov-feed-empty">Ładowanie aktywności…</div>
             ) : recentTasks.length === 0 ? (
-              <div className="pov-feed-empty">
-                No tasks yet – start by creating the first one.
-              </div>
+              <div className="pov-feed-empty">Brak zadań.</div>
             ) : (
               <ul className="pov-feed-list">
-                {recentTasks.map((task: Task) => {
+                {recentTasks.map((task) => {
                   const created = parseDate(task.created_at);
                   const createdLabel = created
                     ? created.toLocaleDateString(undefined, {
@@ -1034,9 +972,9 @@ export default function ProjectOverviewTab() {
                       <div className="pov-feed-meta">
                         <span>Status: {task.status}</span>
                         {task.priority != null && (
-                          <span> • Priority: {task.priority}</span>
+                          <span> • Priorytet: {task.priority}</span>
                         )}
-                        <span> • Created: {createdLabel}</span>
+                        <span> • Utworzono: {createdLabel}</span>
                       </div>
                     </li>
                   );

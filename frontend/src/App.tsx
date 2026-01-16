@@ -19,11 +19,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Strona główna */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Wszystko pod dashboardem (layout + ochrona) */}
         <Route
           path="/dashboard"
           element={
@@ -39,7 +37,6 @@ export default function App() {
           <Route path="fundings" element={<FundingsPage />} />
           <Route path="tasks" element={<TasksPage />} />
 
-          {/* ✅ szczegóły projektu + zakładki (TU, wewnątrz /dashboard) */}
           <Route path="projects/:id" element={<ProjectDetailLayout />}>
             <Route index element={<ProjectOverviewTab />} />
             <Route path="overview" element={<ProjectOverviewTab />} />

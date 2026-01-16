@@ -1,4 +1,3 @@
-/* === OVERLAY & WINDOW === */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -7,7 +6,7 @@
   display: grid;
   place-items: center;
   z-index: 50;
-  padding: 20px; /* było 16px -> więcej marginesu na mobile */
+  padding: 20px; 
 }
 
 .modal-window {
@@ -20,10 +19,9 @@
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  overflow: hidden; /* sticky header/footer */
+  overflow: hidden; 
 }
 
-/* Mobile pełny ekran */
 @media (max-width: 640px) {
   .modal-window {
     width: 100%;
@@ -33,13 +31,12 @@
   }
 }
 
-/* === HEADER & FOOTER (sticky) === */
 .modal-header,
 .modal-footer {
   display: flex;
   align-items: center;
-  gap: 14px;                 /* było 12px */
-  padding: 16px 20px;        /* było 14px 16px -> więcej klikalnej przestrzeni */
+  gap: 14px;                 
+  padding: 16px 20px;        
   background: #ffffff;
 }
 
@@ -71,30 +68,27 @@
   background: transparent;
   font-size: 1.5rem;
   line-height: 1;
-  padding: 6px 10px;         /* delikatnie większy hit-area */
+  padding: 6px 10px;        
   cursor: pointer;
   color: #4b5563;
 }
 .icon-btn:hover {
   color: #111827;
 }
-
-/* === BODY SCROLL === */
 .modal-body {
-  overflow-y: auto;          /* suwak w środku */
-  padding: 22px;             /* było 16px -> więcej wewnętrznego marginesu */
+  overflow-y: auto;         
+  padding: 22px;             
   display: grid;
-  gap: 16px;                 /* było 14px */
+  gap: 16px;                
 }
 
-/* === FORM LAYOUT === */
 .modal-form {
   display: contents;
 }
 
 .form-grid {
   display: grid;
-  gap: 14px;                 /* było 12px */
+  gap: 14px;                 
 }
 @media (min-width: 640px) {
   .form-grid {
@@ -104,7 +98,7 @@
 
 .form-label {
   display: block;
-  font-size: 0.9rem;         /* delikatnie większe */
+  font-size: 0.9rem;        
   color: #374151;
   margin-bottom: 6px;
 }
@@ -114,9 +108,9 @@
 .form-select {
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;       /* 8px -> 10px */
-  padding: 12px;             /* 10px 12px -> 12px */
-  font-size: 0.97rem;        /* 0.95rem -> 0.97rem */
+  border-radius: 10px;       
+  padding: 12px;             
+  font-size: 0.97rem;        
   outline: none;
   background: #fff;
 }
@@ -127,11 +121,11 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
-/* Grupa „Scope” */
+
 .scope-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 18px;            /* 10px 16px -> ciut większe odstępy */
+  gap: 12px 18px;            
 }
 .scope-item {
   display: inline-flex;
@@ -140,13 +134,12 @@
   font-size: 0.97rem;
 }
 
-/* === BUTTONS === */
 .btn-primary {
   background: #2563eb;
   color: white;
   border: none;
   border-radius: 10px;
-  padding: 12px 16px;        /* większy hit-area */
+  padding: 12px 16px;        
   font-weight: 600;
   cursor: pointer;
 }
@@ -164,7 +157,6 @@
   cursor: pointer;
 }
 
-/* === ERRORS === */
 .input-invalid {
   border-color: #dc2626 !important;
   background-color: #fef2f2;

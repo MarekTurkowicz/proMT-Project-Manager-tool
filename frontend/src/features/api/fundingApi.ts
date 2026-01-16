@@ -1,4 +1,3 @@
-// src/features/api/fundingApi.ts
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { axiosBaseQuery } from "../../app/axiosBaseQuery";
 import type { Funding, FundingCreate, FundingUpdate } from "../types/funding";
@@ -10,7 +9,6 @@ type Paged<T> = {
   results: T[];
 };
 
-// 🔹 TO JEST TEN TYP, KTÓRY MUSI MIEĆ `project?: number;`
 export type FundingsListParams = {
   search?: string;
   ordering?:
@@ -25,10 +23,8 @@ export type FundingsListParams = {
     | "name"
     | "-name";
 
-  /** filtr: finansowania powiązane z konkretnym projektem przez project_fundings */
   project?: number;
 
-  // użyj jednego trybu paginacji zgodnie z DRF config:
   page?: number;
   page_size?: number;
   limit?: number;
@@ -48,7 +44,6 @@ export const fundingsApi = createApi({
         if (params?.search) p.set("search", params.search);
         if (params?.ordering) p.set("ordering", params.ordering);
 
-        // 🔹 TU WYSYŁAMY ?project=<id> DO BACKENDU
         if (params?.project != null) {
           p.set("project", String(params.project));
         }

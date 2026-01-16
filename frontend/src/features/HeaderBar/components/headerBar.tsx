@@ -1,7 +1,7 @@
 import React from "react";
 import { useMeQuery, useLogoutMutation } from "../../auth/authApi";
 import "./HeaderBar.css";
-import defaultAvatar from "../../../assets/react.svg";
+import defaultAvatar from "../../../../assets/marek_img.png";
 
 export default function HeaderBar() {
   const { data: me } = useMeQuery();
@@ -9,7 +9,7 @@ export default function HeaderBar() {
   const [open, setOpen] = React.useState(false);
 
   const display = me?.username ?? "User";
-  const avatarUrl = defaultAvatar; // 🔹 teraz zawsze lokalny obrazek
+  const avatarUrl = defaultAvatar;
 
   async function handleLogout() {
     try {
@@ -27,7 +27,7 @@ export default function HeaderBar() {
   return (
     <header className="hb">
       <a className="hb__logo" href="/dashboard">
-        PM App
+        PROMT — Plan • Run • Optimise Management Tool
       </a>
 
       <div className="hb__right">

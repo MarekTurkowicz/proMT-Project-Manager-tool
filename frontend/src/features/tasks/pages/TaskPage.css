@@ -4,6 +4,9 @@
   --ink: #0f172a;
   --muted: #64748b;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
 }
 
 .tasks-page {
@@ -16,7 +19,7 @@
   font-family: system-ui, sans-serif;
 }
 
-/* === SIDEBAR === (wraca do wcześniejszej wersji) */
+/* === SIDEBAR === */
 .tasks-sidebar {
   background: #fff;
   border: 1px solid var(--border);
@@ -95,7 +98,7 @@
   box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.2);
 }
 
-/* === MAIN (kafelek z taskami) === */
+/* === MAIN === */
 .tasks-main {
   background: #fff;
   border: 1px solid var(--border);
@@ -103,11 +106,10 @@
   padding: 18px;
   box-shadow: var(--shadow);
 
-  /* layout elastyczny z przewijanym środkiem */
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(100vh - 64px); /* ~1cm marginesu góra/dół */
+  max-height: calc(100vh - 64px);
 }
 
 .tasks-header {
@@ -123,6 +125,50 @@
   font-weight: 600;
   color: var(--ink);
 }
+
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.form-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  outline: none;
+  height: 40px;           
+  box-sizing: border-box;
+}
+.form-input:focus {
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+  border-color: rgba(79, 70, 229, 0.55);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;      
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  font-weight: 600;
+  font-size: 0.95rem;      
+  height: 40px;            
+  line-height: 1;          
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.9rem;
@@ -133,7 +179,7 @@
   padding: 28px 0;
 }
 
-/* PRZEWIJANY OBSZAR LISTY (suwak tylko tu) */
+/* PRZEWIJANY OBSZAR LISTY */
 .tasks-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -147,7 +193,7 @@
   display: grid;
   gap: 12px;
   margin-top: 0;
-  padding-bottom: 10px; /* lekki oddech przy końcu listy */
+  padding-bottom: 10px;
 }
 
 /* --- karty --- */
@@ -242,6 +288,7 @@
   padding: 6px 10px;
   border: 1px solid transparent;
   transition: background-color 0.15s ease;
+  cursor: pointer;
 }
 .btn-danger:hover {
   background: #dc2626;
@@ -259,5 +306,12 @@
   }
   .tasks-main {
     max-height: none;
+  }
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .form-input {
+    width: 100% !important;
   }
 }

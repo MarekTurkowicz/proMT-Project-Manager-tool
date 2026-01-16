@@ -10,11 +10,3 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   return children;
 }
-
-// export function GuestOnly({ children }: { children: ReactNode }) {
-//   const { isLoading, isError } = useMeQuery();
-//   if (isLoading) return <div className="p-6">Ładowanie…</div>;
-//   if (!isError) return <Navigate to="/dashboard" replace />;
-
-//   return children;
-// }
