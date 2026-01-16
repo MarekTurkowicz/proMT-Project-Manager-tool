@@ -34,7 +34,7 @@ class Funding(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     Q(start_date__isnull=True)
                     | Q(end_date__isnull=True)
                     | Q(start_date__lte=F("end_date"))
@@ -66,7 +66,7 @@ class ProjectFunding(models.Model):
         unique_together = ("project", "funding")
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     Q(allocation_start__isnull=True)
                     | Q(allocation_end__isnull=True)
                     | Q(allocation_start__lte=F("allocation_end"))
@@ -106,7 +106,6 @@ class FundingTask(models.Model):
         max_digits=6, decimal_places=2, null=True, blank=True
     )
 
-    # termin względny: ile dni od startu alokacji/projektu/finansowania
     default_due_days = models.IntegerField(null=True, blank=True)
 
     mandatory = models.BooleanField(default=True)
