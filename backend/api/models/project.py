@@ -21,7 +21,6 @@ class Project(models.Model):
         related_name="owned_projects",
     )
 
-    # M2M przez ProjectFunding
     fundings = models.ManyToManyField(
         "api.Funding", through="api.ProjectFunding", related_name="projects", blank=True
     )
@@ -35,7 +34,7 @@ class Project(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     Q(start_date__isnull=True)
                     | Q(end_date__isnull=True)
                     | Q(start_date__lte=F("end_date"))
