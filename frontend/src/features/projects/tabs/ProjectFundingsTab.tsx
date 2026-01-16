@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProject } from "../context/ProjectContext";
 
 import {
@@ -15,7 +15,7 @@ import {
 import { useListTasksQuery } from "../../tasks/tasksApi";
 import type { TasksListParams } from "../../tasks/tasksApi";
 
-import type { Funding, FundingType, FundingCreate } from "../../types/funding";
+import type { Funding, FundingCreate } from "../../types/funding";
 import type { Task } from "../../tasks/types";
 
 import AddFundingModal from "../../fundings/components/AddFundingModal";
@@ -35,16 +35,6 @@ import {
 
 import "./ProjectFundingsTab.css";
 
-/* ─────────────────────────────
- *  Typy pomocnicze
- * ───────────────────────────── */
-
-type AmountByTypeItem = {
-  type: FundingType | "other";
-  label: string;
-  value: number;
-};
-
 type FundingBarItem = {
   name: string;
   value: number;
@@ -58,8 +48,7 @@ type AmountByStatusItem = {
   value: number;
 };
 
-type ChartMode = "type" | "top" | "status";
-type LeftTab = "list" | "budget";
+type BudgetChartMode = "coverage" | "top" | "status";
 
 type ProjectFundingLink = {
   id: number;
@@ -101,16 +90,20 @@ type FundingStats = {
   totalCount: number;
   totalAmount: number | null;
   currencyLabel: string;
+
   activeCount: number;
   upcomingCount: number;
   finishedCount: number;
-  amountByType: AmountByTypeItem[];
+
   amountBars: FundingBarItem[];
   amountByStatus: AmountByStatusItem[];
+
   upcomingDeadlines: DeadlineItem[];
+
   withAmountCount: number;
   withDatesCount: number;
   withReportingCount: number;
+
   largestFundingName: string | null;
   largestFundingAmount: number | null;
   largestFundingCurrency: string | null;
@@ -120,9 +113,6 @@ type FundingStats = {
 type RiskStats = {
   atRiskCount: number;
   atRiskIds: number[];
-  fundingsWithoutDates: number;
-  reportsOverdue: number;
-  endingSoonCount: number;
   endingSoonItems: EndingSoonItem[];
   nextReportingDays: number | null;
 };
@@ -134,9 +124,115 @@ type CoverageStatus =
   | "covered"
   | "underfunded";
 
-/* ─────────────────────────────
- *  Utils
- * ───────────────────────────── */
+/* Tłumaczenia (UI PL) */
+
+const PL = {
+  // KPI / nagłówki
+  fundings: "Źródła finansowania",
+  totalBudget: "Łączny budżet",
+  dataCompleteness: "Kompletność danych",
+  fundingHealth: "Kondycja finansowania",
+  linkFunding: "Podepnij finansowanie",
+
+  // KPI meta / opisy
+  noFundingsLinkedYet: "Brak podpiętych źródeł finansowania",
+  sumOfLinkedWithAmount:
+    "Suma wszystkich podpiętych źródeł z uzupełnioną kwotą",
+  amount: "Kwota",
+  dates: "Daty",
+  reporting: "Raportowanie",
+
+  // statusy / filtry
+  linkedFundings: "Podpięte finansowania",
+  all: "Wszystkie",
+  active: "Aktywne",
+  upcoming: "Nadchodzące",
+  finished: "Zakończone",
+  atRisk: "Ryzykowne",
+
+  // ładowanie / puste stany
+  loadingFundings: "Ładowanie finansowań…",
+  refreshing: "Odświeżanie…",
+  noFundingsLinkedTitle: "Brak podpiętych finansowań",
+  noFundingsLinkedText:
+    "Podepnij co najmniej jedno źródło finansowania albo dodaj nowe, aby zobaczyć podsumowanie budżetu projektu.",
+  noFundingsMatchingFilter: "Brak finansowań spełniających aktualny filtr.",
+  noDataYet: "Brak danych.",
+  noAmountDataToVisualise: "Brak danych o kwotach do wizualizacji.",
+
+  // linkowanie
+  selectFunding: "Wybierz finansowanie…",
+  allAlreadyLinked: "Wszystkie finansowania są już podpięte",
+  linking: "Podpinanie…",
+  link: "Podepnij",
+  newFunding: "Nowe finansowanie",
+
+  // confirm unlink
+  unlinkConfirm:
+    "Odpiąć to finansowanie od projektu? Skopiowane zadania w ramach finansowania zostaną usunięte.",
+  unlinking: "Odpinanie…",
+  unlink: "Odepnij",
+
+  // prawa kolumna / sekcje
+  budget: "Budżet",
+  coverage: "Pokrycie",
+  topByAmount: "Top wg kwoty",
+  byStatus: "Wg statusu",
+
+  highlights: "Podsumowanie",
+  largestFunding: "Największe finansowanie",
+  shareOfTotalBudget: "Udział w łącznym budżecie",
+  fundingsAtRisk: "Finansowania ryzykowne",
+  activeBudget: "Budżet aktywny",
+
+  // deadlines
+  upcomingReports: "Nadchodzące raporty",
+  noUpcomingReportingDeadlines: "Brak nadchodzących terminów raportowania.",
+  endingSoon: "Kończą się wkrótce (< 30 dni)",
+  noEndingSoon: "Brak finansowań kończących się w ciągu 30 dni.",
+
+  // coverage UI
+  coveredChip: "Pokryte",
+  coveredText: "Aktualne finansowanie pokrywa obecne koszty zadań.",
+  overBudgetChip: "Ponad budżet",
+  overBudgetText:
+    "Koszty zadań są wyższe niż łączna kwota finansowania — projekt jest ponad budżet.",
+  noFundingChip: "Brak finansowania",
+  noFundingText: "Zadania mają koszty, ale nie ma podpiętego finansowania.",
+  noCostsChip: "Brak kosztów",
+  noCostsText: "Finansowanie istnieje, ale brak zadań z kosztami.",
+  noDataChip: "Brak danych",
+  noDataText: "Na razie brak finansowania i brak kosztów zadań.",
+
+  // wykres / legenda
+  valuesIn: "Wartości w",
+
+  // funding row
+  noDates: "Brak dat",
+  watch: "Do obserwacji",
+  healthy: "OK",
+  noTasks: "Brak zadań",
+  show: "Pokaż",
+  hide: "Ukryj",
+  noTasksYet: "Brak zadań",
+  allTasksDone: "Wszystkie zrobione",
+  doneOf: (done: number, total: number) => `${done}/${total} zrobione`,
+
+  // akordeon body
+  tasksInThisProject: "Zadania w tym projekcie",
+  tasksCount: (n: number) => `${n} zadań`,
+  tasksCountRefreshing: (n: number) => `${n} zadań (odświeżanie…)`,
+  openInTasks: "Otwórz w Zadaniach",
+  loadingTasks: "Ładowanie zadań…",
+  noTasksYetHint:
+    "Brak zadań — pojawią się tutaj po podpięciu zadań szablonowych lub utworzeniu zadań projektu dla tego finansowania.",
+
+  due: "Termin",
+  reportingLabel: "Raportowanie",
+  ends: "Koniec",
+  fundingsLabel: "Finansowania",
+  taskCosts: "Koszty zadań",
+} as const;
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -194,12 +290,25 @@ function getFundingStatus(f: Funding, today: Date): FundingStatus {
   return "nodates";
 }
 
-function humanizeDaysDiff(diff: number | null): string {
-  if (diff == null) return "No upcoming reports";
-  if (diff === 0) return "Next report: today";
-  if (diff === 1) return "Next report: in 1 day";
-  if (diff > 1) return `Next report: in ${diff} days`;
-  return "No upcoming reports";
+function humanizeDaysDiffPL(diff: number | null): string {
+  if (diff == null) return "Brak nadchodzących raportów";
+  if (diff === 0) return "Najbliższy raport: dziś";
+  if (diff === 1) return "Najbliższy raport: za 1 dzień";
+  return `Najbliższy raport: za ${diff} dni`;
+}
+
+function timelineLabelPL(endDiff: number): string {
+  if (endDiff < 0) return `Zakończone ${Math.abs(endDiff)} dni temu`;
+  if (endDiff === 0) return "Kończy się dziś";
+  if (endDiff === 1) return "Kończy się za 1 dzień";
+  return `Kończy się za ${endDiff} dni`;
+}
+
+function reportLabelPL(reportDiff: number): string {
+  if (reportDiff < 0) return `Raport spóźniony o ${Math.abs(reportDiff)} dni`;
+  if (reportDiff === 0) return "Raport na dziś";
+  if (reportDiff === 1) return "Raport za 1 dzień";
+  return `Raport za ${reportDiff} dni`;
 }
 
 /**
@@ -212,6 +321,8 @@ function getTaskBudget(task: Task): number {
   return num;
 }
 
+const BUDGET_MODE_STORAGE_KEY = "pft_budget_mode_v1";
+
 /* ─────────────────────────────
  *  GŁÓWNY KOMPONENT
  * ───────────────────────────── */
@@ -220,8 +331,26 @@ export default function ProjectFundingsTab() {
   const project = useProject();
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  const [leftTab, setLeftTab] = useState<LeftTab>("list");
-  const [chartMode, setChartMode] = useState<ChartMode>("type");
+  const [budgetChartMode, setBudgetChartMode] = useState<BudgetChartMode>(
+    () => {
+      try {
+        const raw = window.localStorage.getItem(BUDGET_MODE_STORAGE_KEY);
+        if (raw === "coverage" || raw === "top" || raw === "status") return raw;
+      } catch {
+        // noop
+      }
+      return "coverage";
+    }
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(BUDGET_MODE_STORAGE_KEY, budgetChartMode);
+    } catch {
+      // noop
+    }
+  }, [budgetChartMode]);
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   // ── FUNDINGS DLA TEGO PROJEKTU ─────────────────────
@@ -309,9 +438,7 @@ export default function ProjectFundingsTab() {
     const link = pfByFundingId.get(fundingId);
     if (!link) return;
 
-    const ok = window.confirm(
-      "Unlink this funding from project? Grant-scoped copied tasks will be removed."
-    );
+    const ok = window.confirm(PL.unlinkConfirm);
     if (!ok) return;
 
     try {
@@ -346,7 +473,6 @@ export default function ProjectFundingsTab() {
     activeCount,
     upcomingCount,
     finishedCount,
-    amountByType,
     amountBars,
     amountByStatus,
     upcomingDeadlines,
@@ -379,8 +505,6 @@ export default function ProjectFundingsTab() {
     let withDates = 0;
     let withReporting = 0;
 
-    const byTypeMap = new Map<string, number>();
-
     linkedFundings.forEach((f) => {
       if (f.currency) mainCurrency = f.currency;
 
@@ -405,33 +529,16 @@ export default function ProjectFundingsTab() {
           topName = f.name;
           topCurrency = f.currency ?? mainCurrency;
         }
-
-        const typeKey = f.type ?? "other";
-        byTypeMap.set(typeKey, (byTypeMap.get(typeKey) ?? 0) + amountNum);
       }
 
-      if (f.start_date && f.end_date) {
-        withDates += 1;
-      }
-      if (f.reporting_deadline) {
-        withReporting += 1;
-      }
+      if (f.start_date && f.end_date) withDates += 1;
+      if (f.reporting_deadline) withReporting += 1;
     });
 
     const sumAmount: number | null =
       numericAmounts.length > 0
         ? numericAmounts.reduce((acc, v) => acc + v, 0)
         : null;
-
-    const amountByTypeArr: AmountByTypeItem[] = Array.from(
-      byTypeMap.entries()
-    ).map(
-      ([type, value]): AmountByTypeItem => ({
-        type: type as FundingType | "other",
-        label: type.charAt(0).toUpperCase() + type.slice(1),
-        value: Number(value),
-      })
-    );
 
     const amountBarsArr: FundingBarItem[] = linkedFundings
       .map((f): FundingBarItem => {
@@ -459,21 +566,9 @@ export default function ProjectFundingsTab() {
       .slice(0, 4);
 
     const rawAmountByStatus: AmountByStatusItem[] = [
-      {
-        status: "active",
-        label: "Active",
-        value: activeAmount,
-      },
-      {
-        status: "upcoming",
-        label: "Upcoming",
-        value: upcomingAmount,
-      },
-      {
-        status: "finished",
-        label: "Finished",
-        value: finishedAmount,
-      },
+      { status: "active", label: PL.active, value: activeAmount },
+      { status: "upcoming", label: PL.upcoming, value: upcomingAmount },
+      { status: "finished", label: PL.finished, value: finishedAmount },
     ];
 
     const amountByStatusArr = rawAmountByStatus.filter(
@@ -492,7 +587,6 @@ export default function ProjectFundingsTab() {
       activeCount: active,
       upcomingCount: upcoming,
       finishedCount: finished,
-      amountByType: amountByTypeArr,
       amountBars: amountBarsArr,
       amountByStatus: amountByStatusArr,
       upcomingDeadlines: upcomingDeadlinesArr,
@@ -550,19 +644,17 @@ export default function ProjectFundingsTab() {
         stats.set(fundingId, entry);
       });
 
-      const perFunding: PerFundingCompletion[] = linkedFundings.map(
-        (f): PerFundingCompletion => {
-          const s = stats.get(f.id) ?? { total: 0, done: 0 };
-          const pct = s.total > 0 ? Math.round((s.done / s.total) * 100) : 0;
-          return {
-            fundingId: f.id,
-            name: f.name,
-            total: s.total,
-            done: s.done,
-            pct,
-          };
-        }
-      );
+      const perFunding: PerFundingCompletion[] = linkedFundings.map((f) => {
+        const s = stats.get(f.id) ?? { total: 0, done: 0 };
+        const pct = s.total > 0 ? Math.round((s.done / s.total) * 100) : 0;
+        return {
+          fundingId: f.id,
+          name: f.name,
+          total: s.total,
+          done: s.done,
+          pct,
+        };
+      });
 
       const totals = Array.from(stats.values()).reduce(
         (acc, s) => {
@@ -611,17 +703,12 @@ export default function ProjectFundingsTab() {
       let status: CoverageStatus = "nodata";
       let pct: number | null = null;
 
-      if (totalTaskCost === 0 && (!totalAmount || totalAmount === 0)) {
+      if (totalTaskCost === 0 && (!totalAmount || totalAmount === 0))
         status = "nodata";
-      } else if (totalTaskCost === 0) {
-        status = "nocosts";
-      } else if (!totalAmount || totalAmount === 0) {
-        status = "nofunding";
-      } else if (totalAmount >= totalTaskCost) {
-        status = "covered";
-      } else {
-        status = "underfunded";
-      }
+      else if (totalTaskCost === 0) status = "nocosts";
+      else if (!totalAmount || totalAmount === 0) status = "nofunding";
+      else if (totalAmount >= totalTaskCost) status = "covered";
+      else status = "underfunded";
 
       if (totalTaskCost > 0 && totalAmount != null) {
         const coveredValue = Math.min(totalAmount, totalTaskCost);
@@ -635,8 +722,8 @@ export default function ProjectFundingsTab() {
         fundingVal === 0 && costsVal === 0
           ? []
           : [
-              { name: "Fundings", value: fundingVal },
-              { name: "Task costs", value: costsVal },
+              { name: PL.fundingsLabel, value: fundingVal },
+              { name: PL.taskCosts, value: costsVal },
             ];
 
       return {
@@ -647,6 +734,42 @@ export default function ProjectFundingsTab() {
       };
     }, [projectTasks, totalAmount]);
 
+  const coverageUi = useMemo(() => {
+    if (coverageStatus === "covered") {
+      return {
+        chip: PL.coveredChip,
+        chipClass: "pft-coverage-chip-covered",
+        text: PL.coveredText,
+      };
+    }
+    if (coverageStatus === "underfunded") {
+      return {
+        chip: PL.overBudgetChip,
+        chipClass: "pft-coverage-chip-under",
+        text: PL.overBudgetText,
+      };
+    }
+    if (coverageStatus === "nofunding") {
+      return {
+        chip: PL.noFundingChip,
+        chipClass: "pft-coverage-chip-muted",
+        text: PL.noFundingText,
+      };
+    }
+    if (coverageStatus === "nocosts") {
+      return {
+        chip: PL.noCostsChip,
+        chipClass: "pft-coverage-chip-muted",
+        text: PL.noCostsText,
+      };
+    }
+    return {
+      chip: PL.noDataChip,
+      chipClass: "pft-coverage-chip-muted",
+      text: PL.noDataText,
+    };
+  }, [coverageStatus]);
+
   // ── RISK & DUE ANALYTICS ─────────────────────
 
   const { atRiskCount, atRiskIds, endingSoonItems, nextReportingDays } =
@@ -656,8 +779,6 @@ export default function ProjectFundingsTab() {
 
       let atRisk = 0;
       const atRiskIdsAcc: number[] = [];
-      let withoutDates = 0;
-      let overdueReports = 0;
 
       const endingSoonAcc: EndingSoonItem[] = [];
       const upcomingReportDiffs: number[] = [];
@@ -667,8 +788,6 @@ export default function ProjectFundingsTab() {
         const end = parseDate(f.end_date);
         const report = parseDate(f.reporting_deadline);
         const completionPct = completionMap.get(f.id)?.pct ?? 0;
-
-        if (!start || !end) withoutDates += 1;
 
         let endSoon = false;
         if (end) {
@@ -687,9 +806,7 @@ export default function ProjectFundingsTab() {
         let reportSoon = false;
         if (report) {
           const diff = daysBetween(today, report);
-          if (diff < 0) {
-            overdueReports += 1;
-          } else {
+          if (diff >= 0) {
             upcomingReportDiffs.push(diff);
             if (diff <= 14) reportSoon = true;
           }
@@ -709,7 +826,6 @@ export default function ProjectFundingsTab() {
         }
       });
 
-      const endingSoonCnt = endingSoonAcc.length;
       const nextReport =
         upcomingReportDiffs.length > 0
           ? Math.min(...upcomingReportDiffs)
@@ -718,9 +834,6 @@ export default function ProjectFundingsTab() {
       return {
         atRiskCount: atRisk,
         atRiskIds: atRiskIdsAcc,
-        fundingsWithoutDates: withoutDates,
-        reportsOverdue: overdueReports,
-        endingSoonCount: endingSoonCnt,
         endingSoonItems: endingSoonAcc.sort(
           (a, b) => a.date.getTime() - b.date.getTime()
         ),
@@ -728,7 +841,7 @@ export default function ProjectFundingsTab() {
       };
     }, [linkedFundings, perFundingCompletion, today]);
 
-  const nextReportingLabel = humanizeDaysDiff(nextReportingDays);
+  const nextReportingLabel = humanizeDaysDiffPL(nextReportingDays);
 
   // ── LISTA PO FILTRACH STATUSU ─────────────────────
 
@@ -761,7 +874,6 @@ export default function ProjectFundingsTab() {
 
   return (
     <div className="pft-root">
-      {/* MODAL NOWEGO FUNDING */}
       <AddFundingModal
         open={openAddFunding}
         onClose={() => setOpenAddFunding(false)}
@@ -770,51 +882,46 @@ export default function ProjectFundingsTab() {
 
       {/* KPI STRIP */}
       <div className="card pft-kpi-strip">
-        {/* 1. Fundings */}
         <div className="pft-kpi-item">
-          <div className="pft-kpi-label">Fundings</div>
+          <div className="pft-kpi-label">{PL.fundings}</div>
           <div className="pft-kpi-value">{totalCount}</div>
           <div className="pft-kpi-meta">
             {totalCount === 0
-              ? "No fundings linked yet"
-              : `${activeCount} active • ${upcomingCount} upcoming • ${finishedCount} finished`}
+              ? PL.noFundingsLinkedYet
+              : `${activeCount} ${PL.active.toLowerCase()} • ${upcomingCount} ${PL.upcoming.toLowerCase()} • ${finishedCount} ${PL.finished.toLowerCase()}`}
           </div>
         </div>
 
-        {/* 2. Total budget */}
         <div className="pft-kpi-item">
-          <div className="pft-kpi-label">Total budget</div>
+          <div className="pft-kpi-label">{PL.totalBudget}</div>
           <div className="pft-kpi-value">
             {totalAmount != null
               ? `${totalAmount.toLocaleString()} ${currencyLabel}`
               : "—"}
           </div>
-          <div className="pft-kpi-meta">
-            Sum of all linked fundings with amount set
-          </div>
+          <div className="pft-kpi-meta">{PL.sumOfLinkedWithAmount}</div>
         </div>
 
-        {/* 3. Data completeness */}
         <div className="pft-kpi-item">
-          <div className="pft-kpi-label">Data completeness</div>
+          <div className="pft-kpi-label">{PL.dataCompleteness}</div>
           <div className="pft-kpi-value">
             {totalCount === 0 ? "—" : `${completenessPct}%`}
           </div>
           <div className="pft-kpi-meta-lines">
             <span>
-              Amount:{" "}
+              {PL.amount}:{" "}
               <strong>
                 {withAmountCount}/{totalCount || 0}
               </strong>
             </span>
             <span>
-              Dates:{" "}
+              {PL.dates}:{" "}
               <strong>
                 {withDatesCount}/{totalCount || 0}
               </strong>
             </span>
             <span>
-              Reporting:{" "}
+              {PL.reporting}:{" "}
               <strong>
                 {withReportingCount}/{totalCount || 0}
               </strong>
@@ -822,28 +929,26 @@ export default function ProjectFundingsTab() {
           </div>
         </div>
 
-        {/* 4. Funding health */}
         <div className="pft-kpi-item">
-          <div className="pft-kpi-label">Funding health</div>
+          <div className="pft-kpi-label">{PL.fundingHealth}</div>
           <div className="pft-kpi-value">
             {atRiskCount > 0
-              ? `${atRiskCount} at risk`
+              ? `${atRiskCount} ${PL.atRisk.toLowerCase()}`
               : totalFundingTasks === 0
-              ? "No tasks"
-              : "Healthy"}
+              ? PL.noTasks
+              : PL.healthy}
           </div>
           <div className="pft-kpi-meta">
             {totalFundingTasks === 0
-              ? "No funding-scoped tasks yet"
-              : `${fundingCompletionPct}% of funding tasks done`}
+              ? "Brak zadań przypisanych do finansowań"
+              : `Zrobione: ${fundingCompletionPct}% zadań finansowania`}
             <br />
             {nextReportingLabel}
           </div>
         </div>
 
-        {/* 5. Link / New funding */}
         <div className="pft-kpi-item pft-kpi-link">
-          <div className="pft-kpi-label">Link funding</div>
+          <div className="pft-kpi-label">{PL.linkFunding}</div>
           <div className="pft-kpi-link-row">
             <select
               className="pft-select"
@@ -856,8 +961,8 @@ export default function ProjectFundingsTab() {
             >
               <option value="">
                 {availableFundings.length > 0
-                  ? "Select funding…"
-                  : "All fundings already linked"}
+                  ? PL.selectFunding
+                  : PL.allAlreadyLinked}
               </option>
               {availableFundings.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -876,7 +981,7 @@ export default function ProjectFundingsTab() {
                 availableFundings.length === 0
               }
             >
-              {isLinking ? "Linking…" : "Link"}
+              {isLinking ? PL.linking : PL.link}
             </button>
           </div>
 
@@ -885,7 +990,7 @@ export default function ProjectFundingsTab() {
             className="btn-secondary pft-kpi-new-btn"
             onClick={() => setOpenAddFunding(true)}
           >
-            New funding
+            {PL.newFunding}
           </button>
         </div>
       </div>
@@ -895,552 +1000,441 @@ export default function ProjectFundingsTab() {
         {/* LEWA KOLUMNA */}
         <div className="pft-main">
           <div className="card pft-list-card">
-            <div className="pft-list-tabs">
-              <button
-                type="button"
-                className={
-                  "pft-list-tab" + (leftTab === "list" ? " is-active" : "")
-                }
-                onClick={() => setLeftTab("list")}
-              >
-                Linked fundings
-              </button>
-              <button
-                type="button"
-                className={
-                  "pft-list-tab" + (leftTab === "budget" ? " is-active" : "")
-                }
-                onClick={() => setLeftTab("budget")}
-              >
-                Budget insights
-              </button>
+            <div className="pft-list-head">
+              <h3 className="pft-list-title">{PL.linkedFundings}</h3>
               {isFundingsFetching && (
-                <span className="pft-badge pft-badge-muted">Refreshing…</span>
+                <span className="pft-badge pft-badge-muted">
+                  {PL.refreshing}
+                </span>
               )}
             </div>
 
-            {leftTab === "list" ? (
-              <>
-                {/* Filtry statusów */}
-                <div className="pft-status-filters">
-                  {(
-                    [
-                      ["all", "All"],
-                      ["active", "Active"],
-                      ["upcoming", "Upcoming"],
-                      ["finished", "Finished"],
-                      ["risk", "At risk"],
-                    ] as [StatusFilter, string][]
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={
-                        "pft-status-filter" +
-                        (statusFilter === key ? " is-active" : "")
-                      }
-                      onClick={() => setStatusFilter(key)}
-                    >
-                      {label}
-                      {key === "risk" && atRiskCount > 0 && (
-                        <span className="pft-status-count">{atRiskCount}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+            <div className="pft-status-filters">
+              {(
+                [
+                  ["all", PL.all],
+                  ["active", PL.active],
+                  ["upcoming", PL.upcoming],
+                  ["finished", PL.finished],
+                  ["risk", PL.atRisk],
+                ] as [StatusFilter, string][]
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    "pft-status-filter" +
+                    (statusFilter === key ? " is-active" : "")
+                  }
+                  onClick={() => setStatusFilter(key)}
+                >
+                  {label}
+                  {key === "risk" && atRiskCount > 0 && (
+                    <span className="pft-status-count">{atRiskCount}</span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-                {isFundingsLoading ? (
-                  <div className="pft-empty">Loading fundings…</div>
-                ) : !hasFundings ? (
-                  <div className="pft-empty">
-                    <div className="pft-empty-title">No fundings linked</div>
-                    <div className="pft-empty-text">
-                      Link at least one funding program or create a new one to
-                      see project budget overview.
-                    </div>
-                  </div>
-                ) : displayFundings.length === 0 ? (
-                  <div className="pft-empty">
-                    No fundings matching current filter.
-                  </div>
-                ) : (
-                  <div className="pft-funding-scroll">
-                    <ul className="pft-funding-list">
-                      {displayFundings.map((f) => {
-                        const status = getFundingStatus(f, today);
-                        const isAtRisk = atRiskIds.includes(f.id);
-                        return (
-                          <FundingAccordionRow
-                            key={f.id}
-                            funding={f}
-                            projectId={project.id}
-                            projectFundingId={
-                              pfByFundingId.get(f.id)?.id ?? null
-                            }
-                            status={status}
-                            isAtRisk={isAtRisk}
-                            today={today}
-                            onUnlink={() => handleUnlinkFunding(f.id)}
-                            unlinkDisabled={isUnlinking}
-                          />
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </>
+            {isFundingsLoading ? (
+              <div className="pft-empty">{PL.loadingFundings}</div>
+            ) : !hasFundings ? (
+              <div className="pft-empty">
+                <div className="pft-empty-title">
+                  {PL.noFundingsLinkedTitle}
+                </div>
+                <div className="pft-empty-text">{PL.noFundingsLinkedText}</div>
+              </div>
+            ) : displayFundings.length === 0 ? (
+              <div className="pft-empty">{PL.noFundingsMatchingFilter}</div>
             ) : (
-              <BudgetInsightsTab
-                hasFundings={hasFundings}
-                chartMode={chartMode}
-                setChartMode={setChartMode}
-                amountByType={amountByType}
-                amountBars={amountBars}
-                amountByStatus={amountByStatus}
-                currencyLabel={currencyLabel}
-              />
+              <div className="pft-funding-scroll">
+                <ul className="pft-funding-list">
+                  {displayFundings.map((f) => {
+                    const status = getFundingStatus(f, today);
+                    const isAtRisk = atRiskIds.includes(f.id);
+                    return (
+                      <FundingAccordionRow
+                        key={f.id}
+                        funding={f}
+                        projectId={project.id}
+                        projectFundingId={pfByFundingId.get(f.id)?.id ?? null}
+                        status={status}
+                        isAtRisk={isAtRisk}
+                        today={today}
+                        onUnlink={() => handleUnlinkFunding(f.id)}
+                        unlinkDisabled={isUnlinking}
+                      />
+                    );
+                  })}
+                </ul>
+              </div>
             )}
           </div>
         </div>
 
         {/* PRAWA KOLUMNA */}
         <div className="pft-side">
-          {/* BUDGET COVERAGE */}
+          {/* BUDGET (Coverage + 2 charts) */}
           <div className="card pft-side-card">
             <div className="pft-section-header">
-              <h3>Budget coverage</h3>
+              <h3>{PL.budget}</h3>
             </div>
 
-            {coveragePieData.length === 0 ? (
-              <div className="pft-empty">No funding and no task costs yet.</div>
-            ) : (
+            <div className="pft-chart-tabs">
+              <button
+                type="button"
+                className={
+                  "pft-chart-tab" +
+                  (budgetChartMode === "coverage" ? " is-active" : "")
+                }
+                onClick={() => setBudgetChartMode("coverage")}
+              >
+                {PL.coverage}
+              </button>
+              <button
+                type="button"
+                className={
+                  "pft-chart-tab" +
+                  (budgetChartMode === "top" ? " is-active" : "")
+                }
+                onClick={() => setBudgetChartMode("top")}
+              >
+                {PL.topByAmount}
+              </button>
+              <button
+                type="button"
+                className={
+                  "pft-chart-tab" +
+                  (budgetChartMode === "status" ? " is-active" : "")
+                }
+                onClick={() => setBudgetChartMode("status")}
+              >
+                {PL.byStatus}
+              </button>
+            </div>
+
+            {budgetChartMode === "coverage" && (
               <>
-                <div className="pft-completion-top">
-                  <div className="pft-completion-chart">
-                    <ResponsiveContainer width="100%" height={110}>
-                      <PieChart>
-                        <Pie
-                          data={coveragePieData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={32}
-                          outerRadius={48}
-                          paddingAngle={3}
-                        >
-                          {coveragePieData.map((entry, idx) => (
+                {coveragePieData.length === 0 ? (
+                  <div className="pft-empty">{PL.noDataText}</div>
+                ) : (
+                  <div className="pft-coverage-inner">
+                    <div className="pft-completion-top">
+                      <div className="pft-completion-chart">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={coveragePieData}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={32}
+                              outerRadius={48}
+                              paddingAngle={3}
+                            >
+                              {coveragePieData.map((entry, idx) => (
+                                <Cell
+                                  key={entry.name}
+                                  fill={idx === 0 ? "#3b82f6" : "#f97316"}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+
+                        <div className="pft-completion-center">
+                          <div className="pft-completion-pct">
+                            {coveragePct != null ? `${coveragePct}%` : "—"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pft-completion-meta">
+                        <div className="pft-completion-line">
+                          <span className="pft-completion-key">
+                            {PL.fundingsLabel}
+                          </span>
+                          <span className="pft-completion-val">
+                            {totalAmount != null
+                              ? `${totalAmount.toLocaleString()} ${currencyLabel}`
+                              : `0 ${currencyLabel}`}
+                          </span>
+                        </div>
+                        <div className="pft-completion-line">
+                          <span className="pft-completion-key">
+                            {PL.taskCosts}
+                          </span>
+                          <span className="pft-completion-val">
+                            {taskCostTotal.toLocaleString()} {currencyLabel}
+                          </span>
+                        </div>
+
+                        <div className="pft-coverage-status">
+                          <span
+                            className={`pft-coverage-chip ${coverageUi.chipClass}`}
+                          >
+                            {coverageUi.chip}
+                          </span>
+                          <span className="pft-coverage-text">
+                            {coverageUi.text}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {budgetChartMode === "top" && (
+              <>
+                {!hasFundings ? (
+                  <div className="pft-empty">{PL.noDataYet}</div>
+                ) : amountBars.length === 0 ? (
+                  <div className="pft-empty">{PL.noAmountDataToVisualise}</div>
+                ) : (
+                  <div className="pft-chart-inner">
+                    <ResponsiveContainer width="100%" height={210}>
+                      <BarChart
+                        data={amountBars}
+                        layout="vertical"
+                        margin={{ left: 12, right: 16, top: 8, bottom: 8 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          type="number"
+                          allowDecimals={false}
+                          tickFormatter={(v) =>
+                            (v as number) >= 1000
+                              ? `${Math.round((v as number) / 1000)}k`
+                              : String(v)
+                          }
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={88}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <Tooltip />
+                        <Bar dataKey="value" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="pft-chart-legend">
+                      <span className="pft-chart-legend-item">
+                        {PL.valuesIn} <strong>{currencyLabel}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {budgetChartMode === "status" && (
+              <>
+                {!hasFundings ? (
+                  <div className="pft-empty">{PL.noDataYet}</div>
+                ) : amountByStatus.length === 0 ? (
+                  <div className="pft-empty">{PL.noAmountDataToVisualise}</div>
+                ) : (
+                  <div className="pft-chart-inner">
+                    <ResponsiveContainer width="100%" height={210}>
+                      <BarChart
+                        data={amountByStatus}
+                        margin={{ left: 24, right: 16, top: 8, bottom: 8 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" />
+                        <YAxis
+                          allowDecimals={false}
+                          tickFormatter={(v) =>
+                            (v as number) >= 1000
+                              ? `${Math.round((v as number) / 1000)}k`
+                              : String(v)
+                          }
+                        />
+                        <Tooltip />
+                        <Bar dataKey="value">
+                          {amountByStatus.map((entry, index) => (
                             <Cell
-                              key={entry.name}
-                              fill={idx === 0 ? "#3b82f6" : "#f97316"}
+                              key={entry.status}
+                              fill={
+                                ["#22c55e", "#60a5fa", "#9ca3af"][index % 3]
+                              }
                             />
                           ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
-                    <div className="pft-completion-center">
-                      <div className="pft-completion-pct">
-                        {coveragePct != null ? `${coveragePct}%` : "—"}
-                      </div>
-                      <div className="pft-completion-label">costs covered</div>
+                    <div className="pft-chart-legend">
+                      {amountByStatus.map((s) => (
+                        <span key={s.status} className="pft-chart-legend-item">
+                          {s.label}:{" "}
+                          <strong>
+                            {s.value.toLocaleString()} {currencyLabel}
+                          </strong>
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  <div className="pft-completion-meta">
-                    <div className="pft-completion-line">
-                      <span>Fundings</span>
-                      <span>
-                        {totalAmount != null
-                          ? `${totalAmount.toLocaleString()} ${currencyLabel}`
-                          : `0 ${currencyLabel}`}
-                      </span>
-                    </div>
-                    <div className="pft-completion-line">
-                      <span>Task costs</span>
-                      <span>
-                        {taskCostTotal.toLocaleString()} {currencyLabel}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pft-completion-list">
-                  <div className="pft-completion-row">
-                    <div className="pft-completion-row-head">
-                      <span className="pft-completion-name">
-                        Coverage status
-                      </span>
-                    </div>
-                    <div className="pft-empty mini">
-                      {coverageStatus === "nodata" &&
-                        "No funding and no task costs yet."}
-                      {coverageStatus === "nocosts" &&
-                        "Funding exists, but no tasks with cost yet."}
-                      {coverageStatus === "nofunding" &&
-                        "Tasks have costs but there is no funding linked."}
-                      {coverageStatus === "covered" &&
-                        "Current funding covers existing task costs."}
-                      {coverageStatus === "underfunded" &&
-                        "Task costs are higher than total funding – project is over budget."}
-                    </div>
-                  </div>
-                </div>
+                )}
               </>
             )}
           </div>
 
-          {/* HIGHLIGHTS */}
+          {/* HIGHLIGHTS + DEADLINES (w jednej karcie) */}
           <div className="card pft-side-card">
             <div className="pft-section-header">
-              <h3>Highlights</h3>
+              <h3>{PL.highlights}</h3>
             </div>
+
             {!hasFundings ? (
               <div className="pft-empty">
-                Link at least one funding to see highlights.
+                Podepnij co najmniej jedno finansowanie, aby zobaczyć
+                podsumowanie.
               </div>
             ) : (
-              <div className="pft-highlights">
-                <div className="pft-highlights-row">
-                  <div className="pft-highlights-label">Largest funding</div>
-                  <div className="pft-highlights-value">
-                    {largestFundingName ?? "—"}
-                    {largestFundingAmount != null && (
-                      <span className="pft-highlights-sub">
-                        {largestFundingAmount.toLocaleString()}{" "}
-                        {largestFundingCurrency ?? currencyLabel}
+              <div className="pft-highlights-grid">
+                {/* LEFT: highlights */}
+                <div className="pft-highlights">
+                  <div className="pft-highlights-row">
+                    <div className="pft-highlights-label">
+                      {PL.largestFunding}
+                    </div>
+                    <div className="pft-highlights-value">
+                      {largestFundingName ?? "—"}
+                      {largestFundingAmount != null && (
+                        <span className="pft-highlights-sub">
+                          {largestFundingAmount.toLocaleString()}{" "}
+                          {largestFundingCurrency ?? currencyLabel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pft-highlights-row">
+                    <div className="pft-highlights-label">
+                      {PL.shareOfTotalBudget}
+                    </div>
+                    <div className="pft-highlights-bar">
+                      <div className="pft-progress-track">
+                        <div
+                          className="pft-progress-fill"
+                          style={{
+                            width: `${clamp(
+                              largestFundingSharePct ?? 0,
+                              0,
+                              100
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="pft-highlights-bar-label">
+                        {largestFundingSharePct != null
+                          ? `${largestFundingSharePct}%`
+                          : "—"}
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="pft-highlights-row">
+                    <div className="pft-highlights-label">
+                      {PL.fundingsAtRisk}
+                    </div>
+                    <div className="pft-highlights-bar">
+                      <div className="pft-progress-track">
+                        <div
+                          className="pft-progress-fill pft-progress-fill-risk"
+                          style={{ width: `${clamp(atRiskPct, 0, 100)}%` }}
+                        />
+                      </div>
+                      <span className="pft-highlights-bar-label">
+                        {atRiskCount}/{totalCount || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pft-highlights-row">
+                    <div className="pft-highlights-label">
+                      {PL.activeBudget}
+                    </div>
+                    <div className="pft-highlights-bar">
+                      <div className="pft-progress-track">
+                        <div
+                          className="pft-progress-fill pft-progress-fill-active"
+                          style={{
+                            width: `${
+                              activeBudgetPct != null
+                                ? clamp(activeBudgetPct, 0, 100)
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="pft-highlights-bar-label">
+                        {activeBudgetPct != null ? `${activeBudgetPct}%` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT: reporting + ending soon */}
+                <div className="pft-deadlines-mini">
+                  <div className="pft-deadline-section">
+                    <div className="pft-deadline-title-row">
+                      <span className="pft-deadline-section-title">
+                        {PL.upcomingReports}
+                      </span>
+                    </div>
+                    {upcomingDeadlines.length === 0 ? (
+                      <div className="pft-empty mini">
+                        {PL.noUpcomingReportingDeadlines}
+                      </div>
+                    ) : (
+                      <ul className="pft-deadline-list">
+                        {upcomingDeadlines.map((d) => (
+                          <li key={d.fundingId} className="pft-deadline-item">
+                            <div className="pft-deadline-title">{d.name}</div>
+                            <div className="pft-deadline-meta">
+                              {PL.reportingLabel}:{" "}
+                              {fmtDate(d.reportingDeadline ?? undefined)}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className="pft-deadline-section">
+                    <div className="pft-deadline-title-row">
+                      <span className="pft-deadline-section-title">
+                        {PL.endingSoon}
+                      </span>
+                    </div>
+                    {endingSoonItems.length === 0 ? (
+                      <div className="pft-empty mini">{PL.noEndingSoon}</div>
+                    ) : (
+                      <ul className="pft-deadline-list">
+                        {endingSoonItems.map((d) => (
+                          <li key={d.fundingId} className="pft-deadline-item">
+                            <div className="pft-deadline-title">{d.name}</div>
+                            <div className="pft-deadline-meta">
+                              {PL.ends}: {fmtDate(d.endDate)}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </div>
-
-                <div className="pft-highlights-row">
-                  <div className="pft-highlights-label">
-                    Share of total budget
-                  </div>
-                  <div className="pft-highlights-bar">
-                    <div className="pft-progress-track">
-                      <div
-                        className="pft-progress-fill"
-                        style={{
-                          width: `${clamp(
-                            largestFundingSharePct ?? 0,
-                            0,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="pft-highlights-bar-label">
-                      {largestFundingSharePct != null
-                        ? `${largestFundingSharePct}%`
-                        : "—"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pft-highlights-row">
-                  <div className="pft-highlights-label">Fundings at risk</div>
-                  <div className="pft-highlights-bar">
-                    <div className="pft-progress-track">
-                      <div
-                        className="pft-progress-fill pft-progress-fill-risk"
-                        style={{
-                          width: `${clamp(atRiskPct, 0, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="pft-highlights-bar-label">
-                      {atRiskCount}/{totalCount || 0}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pft-highlights-row">
-                  <div className="pft-highlights-label">Active budget</div>
-                  <div className="pft-highlights-bar">
-                    <div className="pft-progress-track">
-                      <div
-                        className="pft-progress-fill pft-progress-fill-active"
-                        style={{
-                          width: `${
-                            activeBudgetPct != null
-                              ? clamp(activeBudgetPct, 0, 100)
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <span className="pft-highlights-bar-label">
-                      {activeBudgetPct != null ? `${activeBudgetPct}%` : "—"}
-                    </span>
-                  </div>
-                </div>
               </div>
-            )}
-          </div>
-
-          {/* DEADLINES */}
-          <div className="card pft-side-card">
-            <div className="pft-section-header">
-              <h3>Reporting & ending soon</h3>
-            </div>
-
-            {!hasFundings ? (
-              <div className="pft-empty">
-                No fundings linked – no deadlines to show.
-              </div>
-            ) : (
-              <>
-                <div className="pft-deadline-section">
-                  <div className="pft-deadline-title-row">
-                    <span className="pft-deadline-section-title">
-                      Upcoming reports
-                    </span>
-                  </div>
-                  {upcomingDeadlines.length === 0 ? (
-                    <div className="pft-empty mini">
-                      No upcoming reporting deadlines.
-                    </div>
-                  ) : (
-                    <ul className="pft-deadline-list">
-                      {upcomingDeadlines.map((d) => (
-                        <li key={d.fundingId} className="pft-deadline-item">
-                          <div className="pft-deadline-title">{d.name}</div>
-                          <div className="pft-deadline-meta">
-                            Reporting:{" "}
-                            {fmtDate(d.reportingDeadline ?? undefined)}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="pft-deadline-section">
-                  <div className="pft-deadline-title-row">
-                    <span className="pft-deadline-section-title">
-                      Ending soon (&lt; 30 days)
-                    </span>
-                  </div>
-                  {endingSoonItems.length === 0 ? (
-                    <div className="pft-empty mini">
-                      No fundings ending in the next 30 days.
-                    </div>
-                  ) : (
-                    <ul className="pft-deadline-list">
-                      {endingSoonItems.map((d) => (
-                        <li key={d.fundingId} className="pft-deadline-item">
-                          <div className="pft-deadline-title">{d.name}</div>
-                          <div className="pft-deadline-meta">
-                            Ends: {fmtDate(d.endDate)}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────
- *  LEWY TAB: BUDGET INSIGHTS
- * ───────────────────────────── */
-
-function BudgetInsightsTab({
-  hasFundings,
-  chartMode,
-  setChartMode,
-  amountByType,
-  amountBars,
-  amountByStatus,
-  currencyLabel,
-}: {
-  hasFundings: boolean;
-  chartMode: ChartMode;
-  setChartMode: (m: ChartMode) => void;
-  amountByType: AmountByTypeItem[];
-  amountBars: FundingBarItem[];
-  amountByStatus: AmountByStatusItem[];
-  currencyLabel: string;
-}) {
-  return (
-    <div className="pft-budget-root">
-      {!hasFundings ? (
-        <div className="pft-empty">No data yet.</div>
-      ) : (
-        <>
-          <div className="pft-chart-tabs">
-            <button
-              type="button"
-              className={
-                "pft-chart-tab" + (chartMode === "type" ? " is-active" : "")
-              }
-              onClick={() => setChartMode("type")}
-            >
-              By type
-            </button>
-            <button
-              type="button"
-              className={
-                "pft-chart-tab" + (chartMode === "top" ? " is-active" : "")
-              }
-              onClick={() => setChartMode("top")}
-            >
-              Top by amount
-            </button>
-            <button
-              type="button"
-              className={
-                "pft-chart-tab" + (chartMode === "status" ? " is-active" : "")
-              }
-              onClick={() => setChartMode("status")}
-            >
-              By status
-            </button>
-          </div>
-
-          {chartMode === "type" && (
-            <>
-              {amountByType.length === 0 ? (
-                <div className="pft-empty">No amount data to visualise.</div>
-              ) : (
-                <div className="pft-chart-inner">
-                  <ResponsiveContainer width="100%" height={190}>
-                    <PieChart>
-                      <Pie
-                        data={amountByType}
-                        dataKey="value"
-                        nameKey="label"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={65}
-                        paddingAngle={3}
-                      >
-                        {amountByType.map((entry, index) => (
-                          <Cell
-                            key={entry.type}
-                            fill={
-                              [
-                                "#60a5fa",
-                                "#34d399",
-                                "#f97316",
-                                "#e11d48",
-                                "#8b5cf6",
-                              ][index % 5]
-                            }
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="pft-chart-legend">
-                    {amountByType.map((t) => (
-                      <span key={t.type} className="pft-chart-legend-item">
-                        {t.label}:{" "}
-                        <strong>
-                          {t.value.toLocaleString()} {currencyLabel}
-                        </strong>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {chartMode === "top" && (
-            <>
-              {amountBars.length === 0 ? (
-                <div className="pft-empty">No amount data to visualise.</div>
-              ) : (
-                <div className="pft-chart-inner">
-                  <ResponsiveContainer width="100%" height={190}>
-                    <BarChart
-                      data={amountBars}
-                      layout="vertical"
-                      margin={{ left: 90, right: 16, top: 8, bottom: 8 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        type="number"
-                        allowDecimals={false}
-                        tickFormatter={(v) =>
-                          (v as number) >= 1000
-                            ? `${Math.round((v as number) / 1000)}k`
-                            : String(v)
-                        }
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        width={120}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip />
-                      <Bar dataKey="value" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </>
-          )}
-
-          {chartMode === "status" && (
-            <>
-              {amountByStatus.length === 0 ? (
-                <div className="pft-empty">No amount data to visualise.</div>
-              ) : (
-                <div className="pft-chart-inner">
-                  <ResponsiveContainer width="100%" height={190}>
-                    <BarChart
-                      data={amountByStatus}
-                      margin={{ left: 24, right: 16, top: 8, bottom: 8 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" />
-                      <YAxis
-                        allowDecimals={false}
-                        tickFormatter={(v) =>
-                          (v as number) >= 1000
-                            ? `${Math.round((v as number) / 1000)}k`
-                            : String(v)
-                        }
-                      />
-                      <Tooltip />
-                      <Bar dataKey="value">
-                        {amountByStatus.map((entry, index) => (
-                          <Cell
-                            key={entry.status}
-                            fill={["#22c55e", "#60a5fa", "#9ca3af"][index % 3]}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div className="pft-chart-legend">
-                    {amountByStatus.map((s) => (
-                      <span key={s.status} className="pft-chart-legend-item">
-                        {s.label}:{" "}
-                        <strong>
-                          {s.value.toLocaleString()} {currencyLabel}
-                        </strong>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
     </div>
   );
 }
@@ -1490,7 +1484,6 @@ function FundingAccordionRow({
 
   const allTasks: Task[] = tasksPage?.results ?? [];
 
-  // tylko taski z tego konkretnego project_funding
   const tasks: Task[] =
     projectFundingId == null
       ? allTasks
@@ -1503,12 +1496,12 @@ function FundingAccordionRow({
 
   const statusLabel =
     status === "active"
-      ? "Active"
+      ? PL.active
       : status === "upcoming"
-      ? "Upcoming"
+      ? PL.upcoming
       : status === "finished"
-      ? "Finished"
-      : "No dates";
+      ? PL.finished
+      : PL.noDates;
 
   const statusClass =
     status === "active"
@@ -1526,35 +1519,19 @@ function FundingAccordionRow({
   const reportDiff = reportDate != null ? daysBetween(today, reportDate) : null;
 
   let timelineLabel = "";
-  if (endDiff != null) {
-    if (endDiff < 0) {
-      timelineLabel = `Ended ${Math.abs(endDiff)} days ago`;
-    } else if (endDiff === 0) {
-      timelineLabel = "Ends today";
-    } else {
-      timelineLabel = `Ends in ${endDiff} days`;
-    }
-  }
+  if (endDiff != null) timelineLabel = timelineLabelPL(endDiff);
 
   let reportLabel = "";
-  if (reportDiff != null) {
-    if (reportDiff < 0) {
-      reportLabel = `Report overdue by ${Math.abs(reportDiff)} days`;
-    } else if (reportDiff === 0) {
-      reportLabel = "Report due today";
-    } else {
-      reportLabel = `Report in ${reportDiff} days`;
-    }
-  }
+  if (reportDiff != null) reportLabel = reportLabelPL(reportDiff);
 
   const healthLabel =
     total === 0
-      ? "No tasks"
+      ? PL.noTasks
       : allDone
-      ? "Healthy"
+      ? PL.healthy
       : isAtRisk
-      ? "At risk"
-      : "Watch";
+      ? PL.atRisk
+      : PL.watch;
 
   const healthClass =
     total === 0
@@ -1624,10 +1601,10 @@ function FundingAccordionRow({
             </div>
             <span className="pft-mini-progress-label">
               {total === 0
-                ? "No tasks yet"
+                ? PL.noTasksYet
                 : allDone
-                ? "All tasks done"
-                : `${done}/${total} done`}
+                ? PL.allTasksDone
+                : PL.doneOf(done, total)}
             </span>
           </div>
 
@@ -1636,7 +1613,7 @@ function FundingAccordionRow({
             className="btn-ghost pft-open-indicator"
             aria-label="Toggle tasks"
           >
-            {open ? "Hide" : "Show"}
+            {open ? PL.hide : PL.show}
           </button>
         </div>
       </button>
@@ -1646,11 +1623,12 @@ function FundingAccordionRow({
           <div className="pft-funding-body-head">
             <div className="pft-funding-body-left">
               <span className="pft-funding-body-title">
-                Tasks in this project
+                {PL.tasksInThisProject}
               </span>
               <span className="pft-funding-body-meta">
-                {total} tasks
-                {isFetching ? " (refreshing…)" : ""}
+                {isFetching
+                  ? PL.tasksCountRefreshing(total)
+                  : PL.tasksCount(total)}
               </span>
             </div>
             <div className="pft-funding-body-actions">
@@ -1659,7 +1637,7 @@ function FundingAccordionRow({
                 href={`/dashboard/tasks?project=${projectId}&funding=${funding.id}`}
                 onClick={(e) => e.stopPropagation()}
               >
-                Open in Tasks
+                {PL.openInTasks}
               </a>
               <button
                 type="button"
@@ -1670,19 +1648,16 @@ function FundingAccordionRow({
                 }}
                 disabled={unlinkDisabled}
               >
-                {unlinkDisabled ? "Unlinking…" : "Unlink"}
+                {unlinkDisabled ? PL.unlinking : PL.unlink}
               </button>
             </div>
           </div>
 
           <div className="pft-funding-tasks">
             {isLoading && total === 0 ? (
-              <div className="pft-empty mini">Loading tasks…</div>
+              <div className="pft-empty mini">{PL.loadingTasks}</div>
             ) : total === 0 ? (
-              <div className="pft-empty mini">
-                No tasks yet – they will appear here after linking template
-                tasks or creating project tasks for this funding.
-              </div>
+              <div className="pft-empty mini">{PL.noTasksYetHint}</div>
             ) : (
               <ul className="pft-funding-task-list">
                 {tasks.map((t) => (
@@ -1701,7 +1676,7 @@ function FundingAccordionRow({
                         )}
                         {t.due_date && (
                           <span className="pft-task-date">
-                            • Due: {t.due_date}
+                            • {PL.due}: {t.due_date}
                           </span>
                         )}
                       </div>
