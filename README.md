@@ -123,14 +123,5 @@ This project is based on an **engineering diploma thesis**, which includes:
 
 ## Author
 
-**Marek Turkowicz**\
-Faculty of Computer Science\
-Białystok University of Technology\
-2026
-
+**Marek Turkowicz 2026**
 ---
-
-## Project Status
-
-The project is considered **functionally complete** and serves as a foundation for further development and research.
-
