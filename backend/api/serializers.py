@@ -60,8 +60,6 @@ class FundingTaskSerializer(serializers.ModelSerializer):
 
 
 # ---------- PROJECT ----------
-
-
 class ProjectSerializer(serializers.ModelSerializer):
     tasks = serializers.SerializerMethodField()
 
@@ -107,33 +105,24 @@ class ProjectFundingSerializer(serializers.ModelSerializer):
 
 
 # ---------- TASK ----------
-
-
 class TaskSerializer(serializers.ModelSerializer):
-    # WRITE-ONLY: front podaje co najwyżej jedno z nich (albo żadne)
     project = serializers.IntegerField(required=False, allow_null=True, write_only=True)
     funding = serializers.IntegerField(required=False, allow_null=True, write_only=True)
     project_funding = serializers.IntegerField(
         required=False, allow_null=True, write_only=True
     )
 
-    # READ-ONLY: wygodne do list/widoków
     scope_project = serializers.IntegerField(source="scope.project_id", read_only=True)
     scope_funding = serializers.IntegerField(source="scope.funding_id", read_only=True)
     scope_project_funding = serializers.IntegerField(
         source="scope.project_funding_id", read_only=True
     )
 
-    # (opcjonalnie) nazwy dla UI
     project_name = serializers.CharField(source="scope.project.name", read_only=True)
     funding_name = serializers.CharField(source="scope.funding.name", read_only=True)
 
-    # 👇 NOWE: użytkownicy przypisani do zadania
-
-    # pełne dane userów (read-only) – do wyświetlania
     assignees = serializers.SerializerMethodField(read_only=True)
 
-    # lista ID userów (write-only) – do zapisu
     assignee_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
@@ -159,19 +148,16 @@ class TaskSerializer(serializers.ModelSerializer):
             "template",
             "created_at",
             "updated_at",
-            # write-only wejścia:
             "project",
             "funding",
             "project_funding",
-            # read-only wyjścia:
             "scope_project",
             "scope_funding",
             "scope_project_funding",
             "project_name",
             "funding_name",
-            # NOWE:
-            "assignees",  # read-only
-            "assignee_ids",  # write-only
+            "assignees",
+            "assignee_ids",
         ]
         read_only_fields = [
             "id",
@@ -198,14 +184,12 @@ class TaskSerializer(serializers.ModelSerializer):
                 "first_name": u.first_name,
                 "last_name": u.last_name,
                 "email": u.email,
-                # jak chcesz: rola z profilu
                 "role": getattr(getattr(u, "profile", None), "role", None),
             }
             for u in users
         ]
 
     def validate(self, attrs):
-        # --- KONTEKST (project / funding / project_funding) ---
         p = attrs.pop("project", None) if "project" in attrs else None
         f = attrs.pop("funding", None) if "funding" in attrs else None
         pf = attrs.pop("project_funding", None) if "project_funding" in attrs else None
@@ -221,11 +205,9 @@ class TaskSerializer(serializers.ModelSerializer):
 
         self._incoming_scope = {"project": p, "funding": f, "project_funding": pf}
 
-        # --- NOWE: lista userów do przypisania ---
         assignee_ids = (
             attrs.pop("assignee_ids", None) if "assignee_ids" in attrs else None
         )
-        # zapamiętujemy do create/update; None = nie zmieniaj, [] = wyczyść
         self._incoming_assignee_ids = assignee_ids
 
         return attrs
@@ -240,23 +222,20 @@ class TaskSerializer(serializers.ModelSerializer):
         """
         from .models import (
             TaskAssignment,
-        )  # dla pewności lokalny import, jeśli masz podział plików
+        )
 
         if assignee_ids is None:
-            return  # brak pola w payloadzie -> nie zmieniamy
+            return
 
-        # aktualne przypisania
         existing_qs = TaskAssignment.objects.filter(task=task)
         existing_ids = set(existing_qs.values_list("user_id", flat=True))
 
         new_ids = set(assignee_ids)
 
-        # do usunięcia
         to_remove = existing_ids - new_ids
         if to_remove:
             existing_qs.filter(user_id__in=to_remove).delete()
 
-        # do dodania
         to_add = new_ids - existing_ids
         if to_add:
             users = User.objects.filter(id__in=to_add)
@@ -279,7 +258,6 @@ class TaskSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         task = Task.objects.create(**validated_data)
 
-        # scope
         p = self._incoming_scope["project"]
         f = self._incoming_scope["funding"]
         pf = self._incoming_scope["project_funding"]
@@ -291,9 +269,7 @@ class TaskSerializer(serializers.ModelSerializer):
                 funding_id=f or None,
                 project_funding_id=pf or None,
             )
-        # brak scope => „nieprzydzielony”
 
-        # assignees
         self._apply_assignees(task, self._incoming_assignee_ids)
 
         return task
@@ -307,7 +283,6 @@ class TaskSerializer(serializers.ModelSerializer):
             setattr(instance, k, v)
         instance.save()
 
-        # scope
         if any(x is not None for x in (p, f, pf)):
             scope, _ = TaskScope.objects.get_or_create(task=instance)
             scope.project_id = p or None
@@ -315,15 +290,12 @@ class TaskSerializer(serializers.ModelSerializer):
             scope.project_funding_id = pf or None
             scope.save()
 
-        # assignees
         self._apply_assignees(instance, self._incoming_assignee_ids)
 
         return instance
 
 
 # ---------- USER PROFILE ----------
-
-
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
