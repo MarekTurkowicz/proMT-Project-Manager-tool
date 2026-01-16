@@ -20,7 +20,7 @@ def _clone_task_fields(src: Task) -> dict:
     return dict(
         title=src.title,
         description=src.description,
-        status=src.status,  # jeśli chcesz zawsze startować od TODO → ustaw tu "todo"
+        status=src.status,
         priority=src.priority,
         start_date=src.start_date,
         due_date=src.due_date,
@@ -37,13 +37,6 @@ def _clone_task_fields(src: Task) -> dict:
 def create_tasks_for_project_funding(
     sender, instance: ProjectFunding, created, **kwargs
 ):
-    """
-    Po utworzeniu ProjectFunding:
-    (1) sklonuj checklistę z FundingTask (template -> Task + scope.project_funding),
-    (2) SKLONUJ istniejące Taski fundingowe (scope.funding = ten funding) do tego ProjectFunding.
-    Oryginały fundingowe zostają, kopie lądują pod 'project_funding'.
-    Operacja jest idempotentna.
-    """
     if not created:
         return
 
@@ -52,9 +45,7 @@ def create_tasks_for_project_funding(
     base = instance.allocation_start or project.start_date or timezone.now().date()
 
     with transaction.atomic():
-        # (1) Kopie z FundingTask (checklista grantu)
         for tmpl in FundingTask.objects.filter(funding=funding).order_by("id"):
-            # Idempotencja — nie duplikuj tej samej pary (template, PF)
             if Task.objects.filter(
                 template=tmpl, scope__project_funding=instance
             ).exists():
@@ -71,14 +62,11 @@ def create_tasks_for_project_funding(
             TaskScope.objects.create(
                 task=task,
                 project_funding=instance,
-                funding_scoped=True,  # znacznik „kopia grantowa”
+                funding_scoped=True,
             )
 
-        # (2) Kopie ISTNIEJĄCYCH tasków fundingowych (globalnych) → do PF
         funding_tasks_qs = Task.objects.filter(scope__funding=funding)
         for src in funding_tasks_qs:
-            # Idempotencja: jeśli już istnieje klon tego src pod tym PF, pomiń.
-            # Kryterium: ten sam tytuł + ten sam template (jak był) + ten sam PF.
             if Task.objects.filter(
                 scope__project_funding=instance,
                 title=src.title,
@@ -96,10 +84,6 @@ def create_tasks_for_project_funding(
 
 @receiver(post_delete, sender=ProjectFunding)
 def delete_scoped_tasks_on_unlink(sender, instance: ProjectFunding, **kwargs):
-    """
-    Przy odpięciu PF usuń TYLKO kopie grantowe (funding_scoped=True) z tego PF.
-    Ręczne projektowe/fundingowe i „luźne” nie są ruszane.
-    """
     Task.objects.filter(
         scope__project_funding=instance,
         scope__funding_scoped=True,

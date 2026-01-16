@@ -12,8 +12,8 @@ import ProjectFundingsTab from "./features/projects/tabs/ProjectFundingsTab";
 import ProjectTasksTab from "./features/projects/tabs/ProjectTasksTab";
 import ProjectKanbanTab from "./features/projects/tabs/ProjectKanbanTab";
 import ProjectTimelineTab from "./features/projects/tabs/ProjectTimelineTab";
-import ProjectMilestonesTab from "./features/projects/tabs/ProjectMilestonesTab";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
+import ProjectTeamTab from "./features/projects/tabs/ProjectTeamTab";
 
 export default function App() {
   return (
@@ -47,7 +47,7 @@ export default function App() {
             <Route path="tasks" element={<ProjectTasksTab />} />
             <Route path="kanban" element={<ProjectKanbanTab />} />
             <Route path="timeline" element={<ProjectTimelineTab />} />
-            <Route path="milestones" element={<ProjectMilestonesTab />} />
+            <Route path="team" element={<ProjectTeamTab />} />
           </Route>
         </Route>
 

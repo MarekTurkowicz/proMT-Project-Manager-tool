@@ -1,5 +1,4 @@
 # =============== GLOBAL ===============
-# OS files
 .DS_Store
 Thumbs.db
 Icon?
@@ -20,7 +19,6 @@ pnpm-debug.log*
 pip-log.txt
 
 # =============== FRONTEND (Vite/React/TS) ===============
-# Node dependencies and build artifacts
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
@@ -31,18 +29,17 @@ frontend/.turbo/
 frontend/.cache/
 frontend/coverage/
 
-# Environment files (never commit secrets)
+# Environment files 
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 
-# Package manager lockfile policy (uncomment exactly ONE if you prefer to exclude it)
+# Package manager lockfile policy 
 # frontend/package-lock.json
 # frontend/yarn.lock
 # frontend/pnpm-lock.yaml
 
 # =============== BACKEND (Python/Django/DRF) ===============
-# Virtual environments and caches
 backend/.venv/
 backend/venv/
 backend/__pycache__/
@@ -62,27 +59,23 @@ backend/*.sqlite
 backend/dumps/
 backend/*.sql
 
-# User-uploaded media (usually not tracked)
+# User-uploaded media 
 backend/media/
 
-# Environment files (never commit secrets)
+# Environment files 
 backend/.env
 backend/.env.local
 backend/.env.*.local
 
-# IMPORTANT: do NOT ignore Django migrations — they MUST be committed!
-# e.g. backend/app_name/migrations/0001_initial.py
 
 # =============== DOCKER (optional) ===============
-# Local docker caches / volumes (adjust to your setup)
 **/.docker
 **/docker-data/
 **/docker-cache/
 
 # =============== MISC ===============
-# Poetry / pyenv (if used — adjust as needed)
 backend/poetry.lock
 backend/.python-version
 
-# Windows PowerShell history (if it ever lands in the repo)
+# Windows PowerShell history 
 *.pshistory

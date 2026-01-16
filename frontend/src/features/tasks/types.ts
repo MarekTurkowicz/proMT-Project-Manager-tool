@@ -1,6 +1,16 @@
+import type { AppUser, UserProfile } from "../types/users";
+
 // Status/priorytet zgodnie z DRF
 export type TaskStatus = "todo" | "doing" | "done";
 export type TaskPriority = 1 | 2 | 3;
+
+export interface TaskAssignee {
+  id: number;
+  username: string;
+  email?: string;
+  profile?: UserProfile;
+  avatar_url?: string;
+}
 
 /**
  * Obiekt zwracany PRZEZ API (GET /api/tasks/, GET /api/tasks/:id).
@@ -34,7 +44,9 @@ export interface Task {
   // Nazwy pomocnicze (opcjonalne, bo mogą nie przyjść)
   project_name?: string | null;
   funding_name?: string | null;
-}
+  
+  assignees?: AppUser[];
+} 
 
 /**
  * Payload do CREATE (POST /api/tasks/).
@@ -61,6 +73,8 @@ export interface CreateTaskPayload {
   project?: number | null;
   funding?: number | null;
   project_funding?: number | null;
+
+  assignee_ids?: number[];
 }
 
 /**
@@ -86,6 +100,8 @@ export interface UpdateTaskPayload {
   project?: number | null;
   funding?: number | null;
   project_funding?: number | null;
+
+  assignee_ids?: number[];
 }
 
 
@@ -96,3 +112,4 @@ export interface Paged<T> {
   previous: string | null;
   results: T[];
 }
+

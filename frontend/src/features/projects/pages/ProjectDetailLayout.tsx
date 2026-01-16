@@ -39,7 +39,7 @@ export default function ProjectDetailLayout() {
           <TabLink to="tasks" label="Tasks" />
           <TabLink to="kanban" label="Kanban" />
           <TabLink to="timeline" label="Timeline" />
-          <TabLink to="milestones" label="Milestones" />
+          <TabLink to="team" label="Team" />
         </nav>
 
         <section className="pd-content">

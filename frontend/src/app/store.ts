@@ -5,6 +5,7 @@ import { authApi } from "../features/auth/authApi";
 import { tasksApi } from "../features/tasks/tasksApi";
 import { fundingsApi } from "../features/api/fundingApi";
 import { projectFundingApi } from "../features/api/projectFundingApi";
+import { usersApi } from "../features/api/usersApi";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     [tasksApi.reducerPath]: tasksApi.reducer,
     [fundingsApi.reducerPath]: fundingsApi.reducer,
     [projectFundingApi.reducerPath]: projectFundingApi.reducer,
+    [usersApi.reducerPath]: usersApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -22,7 +24,8 @@ export const store = configureStore({
       authApi.middleware,
       tasksApi.middleware,
       fundingsApi.middleware,
-      projectFundingApi.middleware),
+      projectFundingApi.middleware,
+      usersApi.middleware,)
 });
 
 export type RootState = ReturnType<typeof store.getState>;

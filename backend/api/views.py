@@ -1,20 +1,35 @@
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
-from django.db.models import Q
+from django.db.models import Q, Count
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions
 from rest_framework.throttling import ScopedRateThrottle
-
-from .models import Funding, FundingTask, Project, ProjectFunding, Task
+from rest_framework.permissions import IsAuthenticated
+from .models import (
+    Funding,
+    FundingTask,
+    Project,
+    ProjectFunding,
+    Task,
+    TaskAssignment,
+    UserProfile,
+)
 from .serializers import (
     FundingSerializer,
     FundingTaskSerializer,
     ProjectSerializer,
     ProjectFundingSerializer,
     TaskSerializer,
+    TaskAssignmentSerializer,
+    UserSerializer,
+    UserDetailSerializer,
 )
+from django_filters.rest_framework import DjangoFilterBackend
 
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # ─────────────────────────────
 # Health + Me
@@ -50,13 +65,12 @@ def me(request):
 @permission_classes([permissions.AllowAny])
 @ensure_csrf_cookie
 def auth_csrf(request):
-    # Ustawia cookie `csrftoken`
     return Response({"detail": "CSRF cookie set"})
 
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
-@csrf_protect  # wymaga nagłówka X-CSRFToken z cookie
+@csrf_protect
 def auth_login(request):
     username = request.data.get("username")
     password = request.data.get("password")
@@ -80,7 +94,6 @@ def auth_login(request):
     )
 
 
-# anty brute-force: 5/min (skonfiguruj scope w settings → DEFAULT_THROTTLE_RATES['auth_login'])
 auth_login.throttle_classes = [ScopedRateThrottle]
 auth_login.throttle_scope = "auth_login"
 
@@ -97,8 +110,6 @@ def auth_logout(request):
 # Skrótowa perm-class
 # ─────────────────────────────
 class IsAuthenticated(permissions.IsAuthenticated):
-    """Skrótowo, żeby mieć spójną nazwę."""
-
     pass
 
 
@@ -149,15 +160,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "start_date", "end_date", "name", "status"]
     ordering = ["-created_at"]
 
-    # Wszystkie akcje wymagają zalogowania (wewnętrzna appka)
-    # Jeśli chcesz, możesz dopuścić publiczne list/retrieve – wtedy odkomentuj:
-    # def get_permissions(self):
-    #     if self.action in ["list", "retrieve"]:
-    #         return [permissions.AllowAny()]
-    #     return [IsAuthenticated()]
-
     def perform_create(self, serializer):
-        # owner = przesłany w payloadzie lub aktualny user, a jeśli brak logowania → None
         user = self.request.user
         provided_owner = serializer.validated_data.get("owner")
 
@@ -244,3 +247,44 @@ class TaskViewSet(viewsets.ModelViewSet):
         if status_:
             qs = qs.filter(status=status_)
         return qs
+
+
+class TaskAssignmentViewSet(viewsets.ModelViewSet):
+    queryset = TaskAssignment.objects.select_related(
+        "task",
+        "user",
+        "assigned_by",
+    )
+    serializer_class = TaskAssignmentSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["task", "user"]
+
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Do listy userów i szczegółów (karta usera).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = (
+            User.objects.all()
+            .select_related("profile")
+            .annotate(
+                tasks_count=Count("tasks", distinct=True),
+                done_tasks_count=Count(
+                    "tasks",
+                    filter=Q(tasks__status=Task.Status.DONE),
+                    distinct=True,
+                ),
+            )
+            .order_by("id")
+        )
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return UserDetailSerializer
+        return UserSerializer

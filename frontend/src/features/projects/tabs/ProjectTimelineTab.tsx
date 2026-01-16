@@ -68,6 +68,16 @@ type ItemOverEvent = {
 type PriorityLabel = "Low" | "Medium" | "High";
 
 /* ===== Utils ===== */
+// function formatAssigneeNames(t: Task): string {
+//   const assignees = t.assignees ?? [];
+//   if (!assignees.length) return "Unassigned";
+//   if (assignees.length === 1) return assignees[0].username;
+//   if (assignees.length === 2)
+//     return `${assignees[0].username}, ${assignees[1].username}`;
+//   return `${assignees[0].username}, ${assignees[1].username} +${
+//     assignees.length - 2
+//   } more`;
+// }
 
 function escapeHtml(s: string) {
   return s
@@ -77,6 +87,21 @@ function escapeHtml(s: string) {
     .replaceAll('"', "&quot;");
 }
 
+// function getAssigneeLabel(t: Task): string {
+//   if (!t.assignees || t.assignees.length === 0) {
+//     return "Unassigned";
+//   }
+//   if (t.assignees.length <= 3) {
+//     return t.assignees.map((u) => u.username).join(", ");
+//   }
+//   const first3 = t.assignees
+//     .slice(0, 3)
+//     .map((u) => u.username)
+//     .join(", ");
+//   const rest = t.assignees.length - 3;
+//   return `${first3} +${rest}`;
+// }
+
 function itemHtml(t: Task) {
   const title = escapeHtml(t.title ?? "");
   let desc =
@@ -85,7 +110,20 @@ function itemHtml(t: Task) {
       : "";
   if (desc.length > 50) desc = desc.slice(0, 50) + "…";
   const label = desc ? `${title} — ${desc}` : title;
-  return `<div class="tl-item"><div class="tl-label">${label}</div></div>`;
+
+  const assignees = t.assignees ?? [];
+  const assigneeLabel = assignees.length
+    ? assignees.map((u) => escapeHtml(u.username)).join(", ")
+    : "Unassigned";
+
+  return `
+    <div class="tl-item">
+      <div class="tl-label">${label}</div>
+      <div class="tl-assignees">
+        👤 ${assigneeLabel}
+      </div>
+    </div>
+  `;
 }
 
 function statusClass(status: TaskStatus) {
@@ -145,7 +183,6 @@ export default function ProjectTimelineTab() {
   const project = useProject();
   const dispatch = useDispatch<AppDispatch>();
 
-  // 👇 ZMIANA: bez ordering, żeby API zwracało WSZYSTKIE taski z projektu (w tym bez dat)
   const queryArg = useMemo(() => ({ project: project.id }), [project.id]);
 
   const { data, isFetching } = useListTasksQuery(queryArg);
@@ -300,10 +337,22 @@ export default function ProjectTimelineTab() {
 
   const groups = useMemo(
     () =>
-      filteredScheduled.map((t) => ({
-        id: t.id as IdType,
-        content: t.title || `Task #${t.id}`,
-      })),
+      filteredScheduled.map((t) => {
+        const assignees = t.assignees ?? [];
+        const names = assignees.length
+          ? assignees.map((u) => u.username).join(", ")
+          : "Unassigned";
+
+        return {
+          id: t.id as IdType,
+          content: `
+          <div class="tl-group">
+            <div class="tl-group-title">${t.title || `Task #${t.id}`}</div>
+            <div class="tl-group-assignees">${names}</div>
+          </div>
+        `,
+        };
+      }),
     [filteredScheduled]
   );
 
@@ -947,6 +996,18 @@ export default function ProjectTimelineTab() {
                   <span className="hover-pill hover-status">
                     {hoverTask.status}
                   </span>
+                )}
+              </div>
+              <div className="hover-assignees">
+                <span className="hover-assignees-label">Assignees:</span>
+                {hoverTask.assignees && hoverTask.assignees.length > 0 ? (
+                  hoverTask.assignees.map((u) => (
+                    <span key={u.id} className="hover-assignee-pill">
+                      {u.username}
+                    </span>
+                  ))
+                ) : (
+                  <span className="hover-assignees-none">Unassigned</span>
                 )}
               </div>
 
