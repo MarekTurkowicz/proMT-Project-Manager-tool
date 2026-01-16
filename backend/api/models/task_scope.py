@@ -23,14 +23,12 @@ class TaskScope(models.Model):
         created_at: Timestamp when this scope record was created.
     """
 
-    # One-to-one mapping: every task can have at most one scope
     task = models.OneToOneField(
         "api.Task",
         on_delete=models.CASCADE,
         related_name="scope",
     )
 
-    # Exclusive context: only one of these may be non-null
     project = models.ForeignKey(
         "api.Project",
         on_delete=models.SET_NULL,
@@ -53,7 +51,6 @@ class TaskScope(models.Model):
         related_name="task_scopes",
     )
 
-    # Indicator: whether this scope originated from funding (via ProjectFunding)
     funding_scoped = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,11 +58,10 @@ class TaskScope(models.Model):
     class Meta:
         """Meta options for TaskScope."""
 
-        # Enforce that exactly one of (project, funding, project_funding) is set.
         constraints = [
             models.CheckConstraint(
                 name="taskscope_exactly_one",
-                check=(
+                condition=(
                     (
                         Q(project__isnull=False)
                         & Q(funding__isnull=True)
@@ -85,7 +81,6 @@ class TaskScope(models.Model):
             ),
         ]
 
-        # DB indexes for common query patterns
         indexes = [
             models.Index(fields=["project"]),
             models.Index(fields=["funding"]),

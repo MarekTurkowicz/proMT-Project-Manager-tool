@@ -49,11 +49,9 @@ class Task(models.Model):
         MEDIUM = 2, "Medium"
         HIGH = 3, "High"
 
-    # Basic task properties
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
 
-    # Workflow status and priority
     status = models.CharField(
         max_length=10,
         choices=Status.choices,
@@ -64,11 +62,9 @@ class Task(models.Model):
         default=Priority.MEDIUM,
     )
 
-    # Optional scheduling information
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
 
-    # Optional cost/expense-related fields
     cost_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -79,7 +75,6 @@ class Task(models.Model):
     receipt_url = models.URLField(blank=True)
     receipt_note = models.TextField(blank=True)
 
-    # Assignment relations via TaskAssignment (M2M through table)
     assignees = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         through="api.TaskAssignment",
@@ -88,7 +83,6 @@ class Task(models.Model):
         related_name="tasks",
     )
 
-    # Estimated work time in hours
     est_hours = models.DecimalField(
         max_digits=6,
         decimal_places=2,
@@ -96,7 +90,6 @@ class Task(models.Model):
         blank=True,
     )
 
-    # Optional reference to a FundingTask template
     template = models.ForeignKey(
         "api.FundingTask",
         on_delete=models.SET_NULL,
@@ -105,17 +98,15 @@ class Task(models.Model):
         related_name="instances",
     )
 
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         """Meta options for Task."""
 
-        # Ensure that start_date is not after due_date when both are set.
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     Q(start_date__isnull=True)
                     | Q(due_date__isnull=True)
                     | Q(start_date__lte=F("due_date"))
