@@ -13,6 +13,12 @@ import EditTaskModal from "../components/EditTaskModal";
 
 type ScopeFilter = "all" | "project" | "funding" | "unassigned";
 
+const STATUS_LABEL_PL: Record<"todo" | "doing" | "done", string> = {
+  todo: "DO ZROBIENIA",
+  doing: "W TOKU",
+  done: "ZROBIONE",
+};
+
 export default function TasksPage() {
   // --- FILTRY / SORT ---
   const [scope, setScope] = useState<ScopeFilter>("all");
@@ -26,6 +32,8 @@ export default function TasksPage() {
     | "priority"
     | "-priority"
   >("-created_at");
+
+  const [search, setSearch] = useState("");
 
   const params = useMemo(() => {
     switch (scope) {
@@ -46,7 +54,29 @@ export default function TasksPage() {
 
   const { data, isLoading, isFetching, error, refetch } =
     useListTasksQuery(params);
+
   const items: Task[] = data?.results ?? [];
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+
+    return items.filter((t) => {
+      const haystack = [
+        t.title,
+        t.description,
+        t.project_name,
+        t.funding_name,
+        t.scope_project ? `#${t.scope_project}` : "",
+        t.scope_funding ? `#${t.scope_funding}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(q);
+    });
+  }, [items, search]);
 
   // --- CREATE (Add modal) ---
   const [openAdd, setOpenAdd] = useState(false);
@@ -55,12 +85,12 @@ export default function TasksPage() {
   const handleCreate = async (payload: CreateTaskPayload) => {
     try {
       await createTask(payload).unwrap();
-      toast.success("Task added");
+      toast.success("Dodano zadanie");
       setOpenAdd(false);
       refetch();
     } catch (e) {
       console.error(e);
-      toast.error("Failed to add task");
+      toast.error("Nie udało się dodać zadania");
     }
   };
 
@@ -69,16 +99,16 @@ export default function TasksPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleDelete = async (id: number) => {
-    const ok = window.confirm("Delete this task?");
+    const ok = window.confirm("Usunąć to zadanie?");
     if (!ok) return;
     try {
       setDeletingId(id);
       await deleteTask(id).unwrap();
-      toast.success("Task deleted");
+      toast.success("Usunięto zadanie");
       refetch();
     } catch (e) {
       console.error(e);
-      toast.error("Delete failed");
+      toast.error("Nie udało się usunąć");
     } finally {
       setDeletingId(null);
     }
@@ -88,19 +118,18 @@ export default function TasksPage() {
   const [updateTask] = useUpdateTaskMutation();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  // zgodne z EditTaskModal: (id, patch)
   const handleEditSubmit = async (
     id: number,
     patch: Partial<CreateTaskPayload>
   ) => {
     try {
       await updateTask({ id, patch }).unwrap();
-      toast.success("Task updated");
+      toast.success("Zaktualizowano zadanie");
       setEditingTask(null);
       refetch();
     } catch (e) {
       console.error(e);
-      toast.error("Update failed");
+      toast.error("Nie udało się zaktualizować");
     }
   };
 
@@ -108,31 +137,31 @@ export default function TasksPage() {
     <div className="tasks-page">
       {/* LEFT: filters */}
       <aside className="tasks-sidebar">
-        <h2>Tasks</h2>
+        <h2>Zadania</h2>
 
         <div className="filters">
           <button
             className={btn(scope === "all")}
             onClick={() => setScope("all")}
           >
-            All
+            Wszystkie
           </button>
           <button
             className={btn(scope === "unassigned")}
             onClick={() => setScope("unassigned")}
           >
-            Unassigned
+            Bez przypisania
           </button>
           <button
             className={btn(scope === "project")}
             onClick={() => setScope("project")}
           >
-            By project
+            Według projektu
           </button>
 
           {scope === "project" && (
             <div className="input-row">
-              <label>Project ID</label>
+              <label>ID projektu</label>
               <input
                 type="number"
                 min={1}
@@ -151,12 +180,12 @@ export default function TasksPage() {
             className={btn(scope === "funding")}
             onClick={() => setScope("funding")}
           >
-            By funding
+            Według finansowania
           </button>
 
           {scope === "funding" && (
             <div className="input-row">
-              <label>Funding ID</label>
+              <label>ID finansowania</label>
               <input
                 type="number"
                 min={1}
@@ -173,17 +202,17 @@ export default function TasksPage() {
         </div>
 
         <div className="sort">
-          <label>Sort</label>
+          <label>Sortowanie</label>
           <select
             value={ordering}
             onChange={(e) => setOrdering(e.target.value as typeof ordering)}
           >
-            <option value="-created_at">Newest</option>
-            <option value="created_at">Oldest</option>
-            <option value="due_date">Due ↑</option>
-            <option value="-due_date">Due ↓</option>
-            <option value="priority">Priority ↑</option>
-            <option value="-priority">Priority ↓</option>
+            <option value="-created_at">Najnowsze</option>
+            <option value="created_at">Najstarsze</option>
+            <option value="due_date">Termin ↑</option>
+            <option value="-due_date">Termin ↓</option>
+            <option value="priority">Priorytet ↑</option>
+            <option value="-priority">Priorytet ↓</option>
           </select>
         </div>
       </aside>
@@ -191,18 +220,31 @@ export default function TasksPage() {
       {/* MAIN: list */}
       <main className="tasks-main">
         <header className="tasks-header">
-          <h1>Tasks</h1>
+          <h1>Zadania</h1>
+
           <div className="header-actions">
+            <input
+              className="form-input"
+              placeholder="Wyszukaj zadanie…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 300 }}
+            />
+
             <button className="btn-primary" onClick={() => setOpenAdd(true)}>
-              Add task
+              Dodaj zadanie
             </button>
+
             <span className="muted">
-              {isFetching ? "Loading…" : `${data?.count ?? 0} total`}
+              {isFetching
+                ? "Wczytywanie…"
+                : search.trim()
+                ? `${filteredItems.length} / ${data?.count ?? 0}`
+                : `${data?.count ?? 0} łącznie`}
             </span>
           </div>
         </header>
 
-        {/* przewijany obszar */}
         <div className="tasks-scroll">
           {/* ADD MODAL */}
           <AddTaskModal
@@ -212,14 +254,16 @@ export default function TasksPage() {
           />
 
           {isLoading ? (
-            <div className="card centered muted">Loading…</div>
+            <div className="card centered muted">Wczytywanie…</div>
           ) : error ? (
-            <div className="card error">Failed to load tasks.</div>
-          ) : items.length === 0 ? (
-            <div className="card centered muted">No tasks.</div>
+            <div className="card error">Nie udało się wczytać zadań.</div>
+          ) : filteredItems.length === 0 ? (
+            <div className="card centered muted">
+              {search.trim() ? "Brak wyników wyszukiwania." : "Brak zadań."}
+            </div>
           ) : (
             <div className="tasks-list">
-              {items.map((t) => (
+              {filteredItems.map((t) => (
                 <TaskCard
                   key={t.id}
                   task={t}
@@ -275,10 +319,10 @@ function TaskCard({
 
   const prio =
     task.priority >= 3
-      ? chip("chip--red", "High")
+      ? chip("chip--red", "Wysoki")
       : task.priority === 2
-      ? chip("chip--amber", "Medium")
-      : chip("chip--sky", "Low");
+      ? chip("chip--amber", "Średni")
+      : chip("chip--sky", "Niski");
 
   const projectName =
     task.project_name ?? (task.scope_project ? `#${task.scope_project}` : "");
@@ -292,32 +336,31 @@ function TaskCard({
           <h3>{task.title}</h3>
           {task.description && <p className="desc">{task.description}</p>}
           <div className="meta">
-            {chip(statusCls, statusSafe.toUpperCase())}
+            {chip(statusCls, STATUS_LABEL_PL[statusSafe])}
             {prio}
             {projectName && (
-              <span className="meta-text">• Project: {projectName}</span>
+              <span className="meta-text">• Projekt: {projectName}</span>
             )}
             {fundingName && (
-              <span className="meta-text">• Funding: {fundingName}</span>
+              <span className="meta-text">• Finansowanie: {fundingName}</span>
             )}
             {task.due_date && (
-              <span className="meta-text">• Due: {task.due_date}</span>
+              <span className="meta-text">• Termin: {task.due_date}</span>
             )}
           </div>
         </div>
 
-        {/* ACTIONS */}
         <div className="task-actions">
-          <button className="btn" onClick={onStartEdit} title="Edit">
-            Edit
+          <button className="btn" onClick={onStartEdit} title="Edytuj">
+            Edytuj
           </button>
           <button
             className="btn-danger"
             onClick={() => onDelete(task.id)}
             disabled={deleting}
-            title="Delete task"
+            title="Usuń zadanie"
           >
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? "Usuwanie…" : "Usuń"}
           </button>
         </div>
       </div>
