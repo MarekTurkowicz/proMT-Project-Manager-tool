@@ -1,0 +1,386 @@
+:root {
+  --bg: #ffffff;
+  --page: #f6f8fb;
+
+  --ink: #0f172a;
+  --muted: #64748b;
+  --label: #334155;
+
+  --border: #dfe6ef;
+  --soft: #eef2f7;
+  --soft2: #fbfdff;
+
+  --primary: #4f46e5;
+  --danger: #dc2626;
+
+  --radius: 14px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow2: 0 18px 30px rgba(0, 0, 0, 0.14);
+}
+
+/* ===========================
+   OVERLAY + WINDOW
+=========================== */
+.funding-modal.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  padding: 96px 16px 16px;
+}
+
+.funding-modal .modal-window {
+  display: flex;
+  flex-direction: column;
+
+  width: min(92vw, 640px);
+  background: var(--bg);
+
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow2);
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .funding-modal.modal-overlay { padding: 0; }
+  .funding-modal .modal-window {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}
+
+/* ===========================
+   HEADER / FOOTER
+=========================== */
+.funding-modal .modal-header,
+.funding-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+}
+
+.funding-modal .modal-header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.funding-modal .modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  background: #fafafa;
+}
+
+.funding-modal .modal-head-left {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.funding-modal .modal-title {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 900 !important;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.funding-modal .modal-subtitle {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.funding-modal .icon-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+.funding-modal .icon-btn:hover {
+  background: var(--soft);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.funding-modal .modal-form { display: contents; }
+
+/* ===========================
+   BODY
+=========================== */
+.funding-modal .modal-body {
+  padding: 10px;
+  background: var(--page);
+  display: grid;
+  gap: 10px;
+
+  overflow: auto;
+  max-height: calc(84vh - 120px);
+}
+
+/* ===========================
+   ACCORDION
+=========================== */
+.funding-modal .accordion {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.funding-modal .acc-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px 10px;
+  background: var(--soft2);
+  border: none;
+  cursor: pointer;
+
+  font-weight: 760;
+  color: var(--ink);
+  text-align: left;
+}
+.funding-modal .acc-trigger:hover { background: var(--soft); }
+
+.funding-modal .acc-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.funding-modal .acc-title { font-weight: 700; }
+
+.funding-modal .acc-right {
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.funding-modal .acc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.85);
+  border: 1px solid rgba(79, 70, 229, 0.35);
+}
+
+.funding-modal .acc-body {
+  padding: 10px;
+  background: var(--bg);
+}
+
+/* ===========================
+   FIELDS + LABELS
+=========================== */
+.funding-modal .field { min-width: 0; }
+
+.funding-modal .form-label {
+  display: block;
+  font-size: 0.82rem;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--label);
+}
+
+.funding-modal .form-input,
+.funding-modal .form-textarea,
+.funding-modal .form-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.92rem;
+  outline: none;
+
+  transition: box-shadow 0.12s, border-color 0.12s, background 0.12s;
+  box-sizing: border-box;
+}
+
+.funding-modal .form-input,
+.funding-modal .form-select {
+  height: 40px;
+}
+
+.funding-modal .form-input {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  line-height: normal; 
+}
+
+/* textarea */
+.funding-modal .form-textarea {
+  padding: 9px 12px;
+  line-height: 1.35;
+  height: auto;
+}
+.funding-modal .textarea-compact {
+  resize: vertical;
+  min-height: 44px;
+}
+
+.funding-modal .form-input:focus,
+.funding-modal .form-textarea:focus,
+.funding-modal .form-select:focus {
+  border-color: rgba(79, 70, 229, 0.55);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
+}
+
+/* ===========================
+   SELECT — widoczny tekst + strzałka
+=========================== */
+.funding-modal .form-select {
+  padding: 0 34px 0 12px;
+  line-height: normal;
+
+  -webkit-appearance: none;
+  appearance: none;
+
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+
+  text-indent: 0;
+}
+
+.funding-modal .form-select:disabled {
+  background-color: #f8fafc;
+  color: var(--ink);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   DATE INPUT
+=========================== */
+.funding-modal .form-input[type="date"] {
+  padding: 0 40px 0 12px; 
+}
+
+.funding-modal .form-input[type="date"]::-webkit-datetime-edit,
+.funding-modal .form-input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.funding-modal .form-input[type="date"]::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+/* ===========================
+   GRIDS
+=========================== */
+.funding-modal .grid-1 {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.funding-modal .grid-2 {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+}
+
+.funding-modal .grid-3 {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr 120px;
+  align-items: end;
+}
+
+.funding-modal .grid-3-dates {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+.funding-modal .grid-3-dates .field { min-width: 0; }
+.funding-modal .grid-3-dates .form-input[type="date"] { width: 100%; }
+
+@media (max-width: 560px) {
+  .funding-modal .grid-2,
+  .funding-modal .grid-3,
+  .funding-modal .grid-3-dates {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===========================
+   CALLOUT
+=========================== */
+.funding-modal .callout {
+  border: 1px dashed var(--border);
+  background: #fbfdff;
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+.funding-modal .callout b { color: var(--ink); }
+.funding-modal .mt-10 { margin-top: 10px; }
+
+/* ===========================
+   ERRORS
+=========================== */
+.funding-modal .input-invalid {
+  border-color: rgba(220, 38, 38, 0.65) !important;
+  background-color: #fef2f2;
+}
+.funding-modal .error-text {
+  color: var(--danger);
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+/* ===========================
+   BUTTONS
+=========================== */
+.funding-modal .btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.funding-modal .btn-primary:hover { filter: brightness(0.97); }
+.funding-modal .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.funding-modal .btn-secondary {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.funding-modal .btn-secondary:hover { background: var(--soft2); }
