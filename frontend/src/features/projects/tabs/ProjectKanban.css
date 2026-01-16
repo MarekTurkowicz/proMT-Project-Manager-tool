@@ -5,7 +5,15 @@
   --muted: #64748b;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   --col-gap: 12px;
-  --kanban-offset: 180px; /* offset na header / toolbar */
+
+  --todo-tint: #f8fafc;
+  --todo-accent: #94a3b8;
+
+  --doing-tint: #fff7ed;
+  --doing-accent: #fb923c;
+
+  --done-tint: #f0fdf4;
+  --done-accent: #22c55e;
 }
 
 /* ========================= */
@@ -15,7 +23,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
+
   padding: 16px;
   background: var(--bg);
   font-family: system-ui, sans-serif;
@@ -26,6 +38,7 @@
 /* TOOLBAR                   */
 /* ========================= */
 .kanban-toolbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -95,25 +108,56 @@
 /* GRID KOLUMN               */
 /* ========================= */
 .kanban-grid.resizable {
-  display: flex;
-  gap: var(--col-gap);
   flex: 1 1 auto;
   min-height: 0;
-  height: calc(100vh - var(--kanban-offset));
+
+  display: flex;
+  gap: var(--col-gap);
   overflow: hidden;
 }
 
+/* ========================= */
+/* KOLUMNY                   */
+/* ========================= */
 .resizable-col {
   position: relative;
   flex: 0 0 auto;
   min-width: 0;
-  background: #fff;
+
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
+  padding-right: 18px; 
+
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+
+  background: #fff;
+  --col-accent: #94a3b8;
+
+  overflow: visible; 
+}
+
+/* Todo */
+.kanban-grid.resizable > .resizable-col:nth-child(1) {
+  background: var(--todo-tint);
+  --col-accent: var(--todo-accent);
+  border-color: #dbe3ee;
+}
+
+/* Doing */
+.kanban-grid.resizable > .resizable-col:nth-child(2) {
+  background: var(--doing-tint);
+  --col-accent: var(--doing-accent);
+  border-color: #ffe4c7;
+}
+
+/* Done */
+.kanban-grid.resizable > .resizable-col:nth-child(3) {
+  background: var(--done-tint);
+  --col-accent: var(--done-accent);
+  border-color: #cfeedd;
 }
 
 /* ========================= */
@@ -151,18 +195,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  padding-right: 12px; 
+  overflow: visible;  
+
+  border-bottom: 1px solid color-mix(in srgb, var(--col-accent) 25%, #e5e7eb);
 }
 
 .kanban-col-title {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink);
   font-size: 1rem;
 }
 
 .kanban-col-count {
+  flex: 0 0 auto; /* FIX */
   font-size: 0.85rem;
   color: var(--muted);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid color-mix(in srgb, var(--col-accent) 25%, #e5e7eb);
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 /* ========================= */
@@ -170,22 +225,47 @@
 /* ========================= */
 .kanban-col-body {
   flex: 1 1 auto;
+  min-height: 0;
+
   overflow-y: auto;
+
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 10px;
   align-content: start;
-  padding-right: 4px;
+
+  padding-right: 6px;
+  padding-bottom: 2px;
+
   transition: background 0.2s;
 }
 
 .kanban-col-body.is-over {
-  background: #f1f5f9;
-  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 10px;
 }
 
 /* ========================= */
-/* KARTY ZADAŃ               */
+/* EMPTY STATE               */
+/* ========================= */
+.kanban-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+
+  border: 1px dashed rgba(100, 116, 139, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ========================= */
+/* KARTY                     */
 /* ========================= */
 .kanban-card {
   background: #fff;
